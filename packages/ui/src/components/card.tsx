@@ -1,17 +1,17 @@
-import {JSX, type ReactNode} from "react"
+import { JSX, type ReactNode } from "react";
 
 export function Card({
   title,
   children,
   href,
 }: {
-  title: string
-  children: ReactNode
-  href: string
+  title: string;
+  children: ReactNode;
+  href: string;
 }): JSX.Element {
   return (
     <a
-      className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-primary-600 hover:bg-primary-700/30"
+      className="hover:border-primary-600 hover:bg-primary-700/30 group rounded-lg border border-transparent px-5 py-4 transition-colors"
       href={`${href}?utm_source=create-turbo&utm_medium=with-tailwind&utm_campaign=create-turbo"`}
       rel="noopener noreferrer"
       target="_blank"
@@ -22,9 +22,7 @@ export function Card({
           -&gt;
         </span>
       </h2>
-      <p className="m-0 max-w-[30ch] text-sm opacity-50">
-        {children}
-      </p>
+      <p className="m-0 max-w-[30ch] text-sm opacity-50">{children}</p>
     </a>
-  )
+  );
 }

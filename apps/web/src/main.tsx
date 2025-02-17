@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import "@repo/tailwind-config/main.css";
-import { Card } from "@repo/ui/components";
+import { Card, Button } from "@repo/ui/components";
 
 const LINKS = [
   {
@@ -35,6 +35,7 @@ const App = () => (
     <h1 className="text-primary-900 text-3xl font-bold underline">
       Hello world!
     </h1>
+    <Button>Hello</Button>
     <a href="https://www.typescriptlang.org/" target="_blank">
       <img
         src="/typescript.svg"

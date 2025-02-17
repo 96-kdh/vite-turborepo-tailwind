@@ -2,6 +2,9 @@
   "extends": "@repo/typescript-config/vite.json",
   "include": ["src"],
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2020",
     "jsx": "react-jsx"
   }
 }
