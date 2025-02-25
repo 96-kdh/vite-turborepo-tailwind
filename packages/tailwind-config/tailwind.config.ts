@@ -3,19 +3,17 @@ const defaultTailwindConfig = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#c094f6",
-          dark: "#522281",
-          50: "#faf6fe",
-          100: "#f2e9fe",
-          200: "#e7d7fd",
-          300: "#d5b8fa",
-          400: "#c094f6",
-          500: "#a15eee",
-          600: "#8a3de0",
-          700: "#752cc4",
-          800: "#6429a0",
-          900: "#522281",
-          950: "#360c5f",
+          DEFAULT: "#F5C754", // Primary 기본값
+          dark: "#C99E44", // 어두운 버전
+          100: "#FFF7E0",
+          200: "#FEE9B8",
+          300: "#FDD88F",
+          400: "#FDC467",
+          500: "#F5C754", // Primary
+          600: "#E2AD4B",
+          700: "#C99E44",
+          800: "#A78139",
+          900: "#84662D",
         },
       },
     },
