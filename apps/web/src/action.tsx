@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button, Card, Avatar, Menu, X } from "@repo/ui/src/components";
 
 const Action = () => {
-  const [walletConnected, setWalletConnected] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const data = [
@@ -63,11 +62,8 @@ const Action = () => {
         <Button variant="ghost" onClick={() => setIsSidebarOpen(true)}>
           <Menu className="h-6 w-6" />
         </Button>
-        <Button
-          className="bg-primary rounded-2xl text-black"
-          onClick={() => setWalletConnected(!walletConnected)}
-        >
-          {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+        <Button className="bg-primary rounded-2xl text-black">
+          Connect Wallet
         </Button>
       </div>
 
