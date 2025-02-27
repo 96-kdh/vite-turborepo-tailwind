@@ -2,7 +2,6 @@
   "name": "hardhat-project",
   "scripts": {
     "dev": "npx hardhat dev",
-    "dev2": "npx hardhat run script/index.ts",
     "test": "npx hardhat test",
     "compile": "npx hardhat compile"
   },
@@ -16,6 +15,7 @@
     "hardhat": "^2.22.19",
     "picocolors": "^1.1.1",
     "readline-sync": "^1.4.10",
+    "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
     "ws": "^8.18.1"
   }

@@ -1,102 +1,85 @@
 import { task } from "hardhat/config";
-import readline from "readline-sync";
-import pc from "picocolors";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { spawnSync } from "child_process";
-import { Worker, isMainThread, parentPort } from "worker_threads";
-
-import { isYes } from "../utils";
+import { spawn, spawnSync } from "child_process";
 import WebSocket from "ws";
 
+import { SupportChainIds } from "../types";
+
 enum Task {
-  dev = "dev",
+  dev = "dev", // only run local
+  mining = "mining", // only run local
 }
 
-const beforeTaskAction = async (
-  taskArgs: { [key: string]: string } | undefined,
-  hre: HardhatRuntimeEnvironment,
-  afterTaskAction: () => Promise<void>,
-) => {
-  console.log(
-    "\n트랜잭션을 실행 전, 다음과 같은 사항들이 올바른지 체크해주세요.\n",
-  );
-
-  const [owner] = await hre.viem.getWalletClients(); // hardhat config accounts 0 index
-  console.log(`selected network: [${pc.red(hre.network.name)}]`);
-  console.log(`selected address: [${pc.red(owner.account.address)}]`);
-
-  if (!taskArgs) {
-    console.log("\n전달된 taskArgs 가 없습니다.");
-  } else {
-    console.log("\n전달된 taskArgs 는 아래와 같습니다.", "\n{");
-    for (const [key, value] of Object.entries(taskArgs)) {
-      let _value = value;
-      try {
-        _value = JSON.parse(value);
-      } catch (e) {
-        //
-      }
-      console.log(`   ${pc.blue(key)}: `, _value);
+// npx hardhat mining
+task(Task.mining, "run hardhat node mining")
+  .addOptionalParam("interval", "mining interval(ms)", "1000")
+  .setAction(async ({ interval }, hre) => {
+    if (hre.network.config.chainId !== SupportChainIds.LOCALHOST) {
+      throw new Error("only run local");
     }
-    console.log("}");
-  }
 
-  let answer = ""; // user input value
-  answer = readline.question(`진행하시겠습니까 ? (Y/N) `);
-
-  if (!isYes(answer)) return console.log("\n진행하지 않습니다. 종료합니다.");
-
-  await afterTaskAction();
-};
+    console.log(`${interval}ms 블록생성 시작`);
+    await hre.network.provider.send("evm_setIntervalMining", [
+      Number(interval),
+    ]);
+  });
 
 // npx hardhat dev
 task(Task.dev, "override npx hardhat node task").setAction(
-  async (taskArgs, hre) =>
-    beforeTaskAction(taskArgs, hre, async () => {
-      if (isMainThread) {
-        const worker = new Worker(__filename, {
-          execArgv: ["-r", "ts-node/register"],
+  async (taskArgs, hre) => {
+    if (hre.network.config.chainId !== SupportChainIds.LOCALHOST) {
+      throw new Error("only run local");
+    }
+
+    console.log("\n🚀 Hardhat 노드를 실행합니다...");
+
+    const hardhatProcess = spawn("npx", ["hardhat", "node"], {
+      stdio: "inherit", // ✅ 부모 프로세스의 stdout/stderr을 그대로 사용
+      shell: true, // ✅ 쉘을 통해 실행
+    });
+
+    (function nodeHealthChecker() {
+      const ws = new WebSocket("ws://localhost:8545");
+
+      ws.on("open", async () => {
+        console.log("✅ hardhat node 인식완료, 1s block 생성을 시작합니다.");
+
+        spawnSync("npx", ["hardhat", Task.mining, "--network", "localhost"], {
+          stdio: "inherit",
+          shell: true,
         });
 
-        (function nodeHealthChecker() {
-          const ws = new WebSocket("ws://localhost:8545");
+        console.log(
+          "✅ 1s block 생성 완료, ignition 으로 컨트랙트를 배포합니다.",
+        );
 
-          ws.on("open", async () => {
-            console.log("✅ node 실행 완료, 1000ms 블록생성 시작");
-            await hre.network.provider.send("evm_setIntervalMining", [1000]);
+        spawnSync(
+          "npx",
+          [
+            "hardhat",
+            "ignition",
+            "deploy",
+            "ignition/modules/Lock.ts",
+            "--network",
+            "localhost",
+          ],
+          {
+            stdio: "inherit",
+            shell: true,
+          },
+        );
 
-            ws.close();
+        console.log("✅ ignition 으로 컨트랙트 배포를 마쳤습니다.");
+      });
 
-            let answer = "";
+      ws.on("error", (err: { message: string }) => {
+        console.error("❌ hardhat node 인식 실패, ", err.message);
+        setTimeout(nodeHealthChecker, 1000);
+      });
+    })();
 
-            answer = readline.question(`\n진행하시겠습니까 ? (Y/N) `);
-
-            if (!isYes(answer)) {
-              return console.log("\n실행하지 않습니다. 종료합니다.");
-            }
-            // npx hardhat ignition deploy ignition/modules/index.ts --network localhost
-
-            console.log("실행한 후 종료합니다.");
-          });
-
-          ws.on("error", (err: { message: string }) => {
-            console.error("❌ 아직 노드 실행되지 않음, ", err.message);
-            setTimeout(nodeHealthChecker, 1000);
-          });
-        })();
-
-        worker.on("exit", () => {
-          console.log("Hardhat 노드 실행이 종료되었습니다.");
-        });
-      } else {
-        // Worker 스레드에서 Hardhat 실행
-        spawnSync("npx", ["hardhat", "node"], {
-          stdio: "inherit", // ✅ 부모 프로세스의 stdout과 stderr를 그대로 사용
-          shell: true, // ✅ 실제 쉘에서 실행 (Windows에서도 정상 작동)
-          // detached: false, // ✅ 부모 프로세스 종료 시 자식 프로세스도 종료됨
-        });
-      }
-
-      parentPort?.postMessage("done");
-    }),
+    // ✅ Hardhat 노드가 백그라운드로 넘어가지 않도록 `await` 사용
+    await new Promise((resolve) => {
+      hardhatProcess.on("close", resolve); // Hardhat 종료될 때까지 대기
+    });
+  },
 );
