@@ -2,6 +2,7 @@ import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { mainnet, arbitrum, sepolia } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 import { defineChain } from "@reown/appkit/networks";
+import { SupportChainIds } from "@repo/hardhat/script/constants";
 
 // Get projectId from https://cloud.reown.com
 export const projectId = "178e3a1df5591e0679afb2c30476cc9e"; // this is a public projectId only to use on localhost
@@ -18,7 +19,7 @@ export const metadata = {
 };
 
 const customNetwork = defineChain({
-  id: 31337,
+  id: SupportChainIds.LOCALHOST,
   caipNetworkId: "eip155:31337",
   chainNamespace: "eip155",
   name: "Custom Network(localhost)",

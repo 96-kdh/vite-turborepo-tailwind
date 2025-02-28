@@ -12,7 +12,7 @@ import {
   useSignMessage,
   useBalance,
 } from "wagmi";
-import { networks } from "../wagmi.js";
+import { networks } from "../wagmi";
 
 // test transaction
 const TEST_TX = {

@@ -25,6 +25,8 @@ function App() {
 
   return (
     <>
+      <button id="open-connect-modal">Open Modal Custom Button</button>
+      <button id="open-network-modal">Open Networks Custom Button</button>
       <appkit-button />
       <ActionButtonList
         sendHash={receiveHash}

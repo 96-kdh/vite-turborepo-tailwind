@@ -2,7 +2,7 @@ import { task } from "hardhat/config";
 import { spawn, spawnSync } from "child_process";
 import WebSocket from "ws";
 
-import { SupportChainIds } from "../types";
+import { SupportChainIds } from "../constants";
 
 enum Task {
   dev = "dev", // only run local
