@@ -28,6 +28,7 @@
     "chai": "^4.4.1",
     "ethers": "^6.13.5",
     "hardhat": "^2.22.19",
+    "hardhat-gas-reporter": "^2.2.2",
     "picocolors": "^1.1.1",
     "readline-sync": "^1.4.10",
     "solidity-bytes-utils": "^0.8.3",

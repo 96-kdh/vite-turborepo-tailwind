@@ -3,6 +3,7 @@ import { SolcConfig } from "hardhat/types";
 
 import "@nomicfoundation/hardhat-toolbox-viem";
 import "@typechain/hardhat";
+import "hardhat-gas-reporter";
 
 import "./script/task";
 
