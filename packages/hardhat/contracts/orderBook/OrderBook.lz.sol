@@ -1,133 +1,233 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./IOrderBook.sol";
 import "hardhat/console.sol";
+
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OApp, MessagingFee, Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
+import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
+import { IOrderBook } from "./IOrderBook.sol";
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
+    uint32 public srcEid;
 
-//contract OrderBookWithLz is IOrderBook, OApp, ReentrancyGuard {
-//    uint256 public orderId;
-//    // mapping(orderId => public)
-//    mapping(uint256 => Order) public order;
-//
-//    uint32 internal constant srcEid;
-//
-//    constructor(address _layerZeroEndpoint, address _delegate, uint32 _srcEid) OApp(_layerZeroEndpoint, _delegate) Ownable(_delegate) {
-//        srcEid = _srcEid;
-//    }
-//
-//    function createOrder(
-//        uint256 _srcAmount,
-//        uint256 _dstAmount,
-//        uint32 _dstEid,
-//        bytes calldata _options
-//    ) external payable nonReentrant {
-//        require(msg.value > 0, "Must send native token");
-//        require(_dstAmount > 0, "Receive amount must be greater than zero");
-//
-//        bytes memory payload = abi.encodePacked(
-//            bytes4(keccak256("CreateOrder")),
-//            abi.encode(orderId, msg.sender, srcEid, _srcAmount, _dstEid, _dstAmount)
-//        );
-//        MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
-//        require(msg.value > fee.nativeFee, "Insufficient funds fee");
-//
-//        uint256 lockedAmount = msg.value - fee.nativeFee;
-//        require(_srcAmount == lockedAmount, "dif _srcAmount & lockedAmount");
-//
-//        _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
-//
-//        order[orderId] = Order({
-//            maker: msg.sender,
-//            srcEid: srcEid,
-//            srcAmount: lockedAmount,
-//            dstEid: _dstEid,
-//            dstAmount: _dstAmount,
-//            taker: address(0),
-//            isFilled: false
-//        });
-//
-//        emit CreateOrder(orderId, msg.sender, lockedAmount, uint32(block.chainid), _receiveAmount, _receiveChainId, address(0));
-//        orderId++;
-//    }
-//
-//    function acceptOrder(uint256 _orderId) external payable nonReentrant {
-//
-//    }
-//
-//    function _lzReceive(
-//        Origin calldata _origin,
-//        bytes32 /*_guid*/,
-//        bytes calldata _payload,
-//        address /*_executor*/,
-//        bytes calldata /*_extraData*/
-//    ) internal override {
-//        // 메시지 타입 확인 (주문 생성 vs 주문 체결 완료)
-//        bytes4 messageType;
-//        assembly {
-//            let ptr := mload(0x40)  // 메모리 빈 공간 포인터 가져오기
-//            calldatacopy(ptr, _payload.offset, 4)  // calldata에서 4바이트 복사
-//            messageType := mload(ptr)  // 복사한 데이터 로드
-//        }
-//
-//        if (messageType == bytes4(keccak256("CreateOrder"))) {
-//            _handleCreateOrder(_payload);
-//        } else if (messageType == bytes4(keccak256("AcceptOrder"))) {
-//            _handleAcceptOrder(_payload);
-//        } else {
-//            revert("Invalid message type");
-//        }
-//    }
-//
-//    function _handleCreateOrder(bytes calldata _payload) internal {
-//        (uint256 orderId, address creator, uint256 amountGive, uint32 chainGive, uint256 amountReceive, uint32 chainReceive)
-//        = abi.decode(_payload[4:], (uint256, address, uint256, uint32, uint256, uint32));
-//
-//        // ✅ B 체인의 컨트랙트에 동일한 주문 정보 저장
-//        orders[orderId] = Order({
-//            maker: creator,
-//            sendAmount: amountGive,
-//            sendChainId: chainGive,
-//            receiveAmount: amountReceive,
-//            receiveChainId: chainReceive,
-//            taker: address(0),
-//            isFilled: false
-//        });
-//
-////        emit OrderCreated(orderId, creator, amountGive, chainGive, amountReceive, chainReceive);
-//    }
-//
-//    function _handleAcceptOrder(bytes calldata _payload) internal {
-//        (uint256 orderId, address taker) = abi.decode(_payload[4:], (uint256, address));
-//
-//        Order storage order = orders[orderId];
-//        require(order.maker != address(0), "Order does not exist");
-//        require(!order.isFilled, "Order already filled");
-//
-//        // ✅ 주문을 체결된 것으로 업데이트
-//        order.isFilled = true;
-//        order.taker = taker;
-//
-////        emit OrderFilled(orderId, taker, order.chainGive);
-//
-//        // ✅ 주문 체결자(B)에게 ETH 전송
-//        payable(taker).transfer(order.sendAmount);
-//    }
-//
-//    function quote(
-//        uint32 _dstEid,
-//        bytes memory _payload,
-//        bytes memory _options,
-//        bool _payInLzToken
-//    ) public view returns (MessagingFee memory fee) {
-//        fee = _quote(_dstEid, _payload, _options, _payInLzToken);
-//    }
-//
-//    function _payNative(uint256 _nativeFee) internal override returns (uint256 nativeFee) {
-//        require(msg.value >= _nativeFee, "Not enough native tokens");
-//        return _nativeFee;
-//    }
-//}
+    uint256 public orderId;
+    // mapping(orderId => Order)
+    mapping(uint256 => Order) public srcOrder;
+    // mapping(keccak256(abi.encodePacked(orderId, eid)) => Order)
+    mapping(bytes32 => Order) public dstOrder;
+
+    constructor(
+        address _endpoint,
+        address _delegate,
+        uint32 _srcEid
+    ) OApp(_endpoint, _delegate) Ownable(_delegate) {
+        srcEid = _srcEid;
+    }
+
+    function createOrder(
+        uint32 _dstEid,
+        uint256 _depositAmount,
+        uint256 _desiredAmount,
+        bytes calldata _options
+    ) external payable {
+        require(_desiredAmount > 0, "Receive amount must be greater than zero");
+        require(srcOrder[orderId].status == OrderStatus.no, "order status must be 0(OrderStatus.no)");
+
+        bytes memory payload = abi.encodePacked(
+            bytes4(keccak256("CreateOrder")),
+            abi.encode(orderId, msg.sender, srcEid, _depositAmount, _dstEid, _desiredAmount)
+        );
+        MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
+
+        require(msg.value >= fee.nativeFee, "Insufficient funds fee");
+        uint256 lockedAmount = msg.value - fee.nativeFee;
+        require(_depositAmount == lockedAmount, "dif _depositAmount & lockedAmount");
+
+        srcOrder[orderId] = Order({
+            maker: payable(msg.sender),
+            taker: payable(address(0)),
+            depositAmount: _depositAmount,
+            desiredAmount: _desiredAmount,
+            timelock: 0,
+            status: OrderStatus.createOrder
+        });
+
+        _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+
+        orderId++;
+    }
+
+    function cancelOrder(uint256 _orderId, uint32 _dstEid, bytes calldata _options) external payable {
+        Order storage order = srcOrder[_orderId];
+
+        require(order.status == OrderStatus.createOrder, "order status must be 1(OrderStatus.createOrder)");
+        require(order.maker == msg.sender, "msg.sender is not maker");
+
+        bytes memory payload = abi.encodePacked(
+            bytes4(keccak256("cancelOrder")), abi.encode(_orderId, msg.sender, srcEid)
+        );
+        MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
+        require(msg.value == fee.nativeFee, "dif msg.value & fee.nativeFee");
+
+        order.status = OrderStatus.canceled;
+        payable(order.maker).transfer(order.depositAmount);
+
+        _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+    }
+
+    function executeOrder(
+        uint256 _orderId,
+        uint32 _dstEid,
+        uint256 _paymentAmount,
+        uint256 _desiredAmount,
+        uint256 _timelock,
+        bytes calldata _options
+    ) external payable {
+        require(msg.sender != address(0), "taker must not be zero address");
+        require(_timelock >= block.timestamp + 1200, "Requires a timelock of at least 10 minutes");
+
+        bytes32 dstOrderId = keccak256(abi.encodePacked(
+            _orderId,
+            _dstEid
+        ));
+        Order storage order = dstOrder[dstOrderId];
+
+        require(dstOrder[dstOrderId].taker == address(0), "Order already filled");
+        require(dstOrder[dstOrderId].desiredAmount == _paymentAmount, "dif desiredAmount & _paymentAmount");
+        require(dstOrder[dstOrderId].status == OrderStatus.createOrderLzReceive, "Order status must be 2(OrderStatus.createOrderLzReceive)");
+
+        order.taker = payable(msg.sender);
+        order.timelock = _timelock;
+        order.status = OrderStatus.executeOrder;
+
+        bytes memory payload = abi.encodePacked(
+            bytes4(keccak256("executeOrder")),
+            abi.encode(_orderId, msg.sender, srcEid, _paymentAmount, _dstEid, _desiredAmount, _timelock)
+        );
+        MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
+        require(msg.value >= fee.nativeFee, "Insufficient funds fee");
+        uint256 lockedAmount = msg.value - fee.nativeFee;
+        require(_paymentAmount == lockedAmount, "dif _paymentAmount & lockedAmount");
+
+        _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+    }
+
+    function claim(uint256 _orderId, uint32 _dstEid, bytes calldata _options) external payable {
+        Order storage order = srcOrder[_orderId];
+
+        require(order.maker == msg.sender, "msg.sender is not maker");
+        require(order.status == OrderStatus.executeOrderLzReceive, "order status must be 4(OrderStatus.executeOrderLzReceive)");
+
+        order.status = OrderStatus.claim;
+
+        bytes memory payload = abi.encodePacked(
+            bytes4(keccak256("claim")),
+            abi.encode(_orderId, msg.sender, srcEid)
+        );
+        MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
+        require(msg.value == fee.nativeFee, "dif msg.value & fee.nativeFee");
+
+        _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+    }
+
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32 /*_guid*/,
+        bytes calldata _payload,
+        address /*_executor*/,
+        bytes calldata /*_extraData*/
+    ) internal override {
+        bytes4 messageType;
+
+        assembly {
+            let ptr := mload(0x40)  // 메모리 빈 공간 포인터 가져오기
+            calldatacopy(ptr, _payload.offset, 4)  // calldata에서 4바이트 복사
+            messageType := mload(ptr)  // 복사한 데이터 로드
+        }
+
+        if (messageType == bytes4(keccak256("CreateOrder"))) {
+            (uint256 _orderId, address _maker, uint32 _dstEid, uint256 _depositAmount, uint32 _srcEid, uint256 _desiredAmount)
+            = abi.decode(_payload[4:], (uint256, address, uint32, uint256, uint32, uint256));
+
+
+            require(_maker != address(0), "maker must not be zero address");
+            require(_srcEid != srcEid, "invalid src endpoint id, with payload");
+            require(_origin.srcEid != _srcEid, "invalid src endpoint id, with payload");
+
+            bytes32 dstOrderId = keccak256(abi.encodePacked(
+                _orderId,
+                _dstEid
+            ));
+
+            require(dstOrder[dstOrderId].maker == address(0), "Order already filled");
+            require(dstOrder[dstOrderId].status == OrderStatus.no, "order status must be zero(OrderStatus.no)");
+
+            dstOrder[dstOrderId] = Order({
+                maker: payable(_maker),
+                taker: payable(address(0)),
+                depositAmount: _depositAmount,
+                desiredAmount: _desiredAmount,
+                timelock: 0,
+                status: OrderStatus.createOrderLzReceive
+            });
+        } else if (messageType == bytes4(keccak256("executeOrder"))) {
+            (uint256 _orderId, address _taker, , , uint32 _srcEid, , uint256 _timelock)
+            = abi.decode(_payload[4:], (uint256, address, uint32, uint256, uint32, uint256, uint256));
+
+            require(srcOrder[_orderId].maker != address(0), "order does not exist");
+            require(_srcEid != srcEid, "invalid src endpoint id, with payload");
+            require(_origin.srcEid != _srcEid, "invalid src endpoint id, with payload");
+            require(_timelock >= block.timestamp, "order has expired");
+            require(srcOrder[_orderId].status == OrderStatus.createOrder, "src order status must be 1(OrderStatus.createOrder)");
+
+            srcOrder[_orderId].timelock = _timelock;
+            srcOrder[_orderId].taker = payable(_taker);
+            srcOrder[_orderId].status = OrderStatus.executeOrderLzReceive;
+
+            payable(_taker).transfer(srcOrder[_orderId].depositAmount);
+        } else if (messageType == bytes4(keccak256("claim"))) {
+            (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
+            bytes32 dstOrderId = keccak256(abi.encodePacked(
+                _orderId,
+                _dstEid
+            ));
+
+            require(dstOrder[dstOrderId].maker == _maker, "msg sender is not maker, with payload");
+            require(dstOrder[dstOrderId].status == OrderStatus.executeOrder, "status must be 3(OrderStatus.executeOrder)");
+
+            dstOrder[dstOrderId].status = OrderStatus.claimLzReceive;
+            payable(_maker).transfer(dstOrder[dstOrderId].desiredAmount);
+        } else if (messageType == bytes4(keccak256("canceled"))) {
+            (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
+            bytes32 dstOrderId = keccak256(abi.encodePacked(
+                _orderId,
+                _dstEid
+            ));
+            require(dstOrder[dstOrderId].maker == _maker, "msg sender is not maker, with payload");
+
+            if (dstOrder[dstOrderId].taker != address(0) && dstOrder[dstOrderId].status == OrderStatus.executeOrder) {
+                dstOrder[dstOrderId].status = OrderStatus.canceledLzReceive;
+                payable(dstOrder[dstOrderId].taker).transfer(dstOrder[dstOrderId].desiredAmount);
+            }
+        } else {
+            revert("Invalid message type");
+        }
+    }
+
+
+    function quote(
+        uint32 _dstEid,
+        bytes memory _payload,
+        bytes memory _options,
+        bool _payInLzToken
+    ) external view returns (MessagingFee memory fee) {
+        fee = _quote(_dstEid, _payload, _options, _payInLzToken);
+    }
+
+    function _payNative(uint256 _nativeFee) internal override returns (uint256 nativeFee) {
+        require(msg.value >= _nativeFee, "Not enough native tokens");
+        return _nativeFee;
+    }
+}
