@@ -7,7 +7,32 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OApp, MessagingFee, Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
-import { IOrderBook } from "./IOrderBook.sol";
+
+contract IOrderBook {
+    enum OrderStatus {
+        no,
+        createOrder,
+        createOrderLzReceive,
+        executeOrder,
+        executeOrderLzReceive,
+        claim,
+        claimLzReceive,
+        canceled,
+        canceledLzReceive
+    }
+
+    struct Order {
+        address payable maker;      // The party that locked funds.
+        address payable taker;      // Set when the taker executes the swap.
+        uint256 depositAmount;       // Amount of native tokens locked by the maker.
+        uint256 desiredAmount;      // The amount the maker expects from the taker.
+        uint256 timelock;           // Expiration timestamp (Unix epoch).
+        OrderStatus status;
+    }
+
+    // event CreateOrder();
+    // event UpdateOrderStatus();
+}
 
 contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
     uint32 public srcEid;
@@ -24,6 +49,18 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         uint32 _srcEid
     ) OApp(_endpoint, _delegate) Ownable(_delegate) {
         srcEid = _srcEid;
+    }
+
+    function getOrder(uint256 _orderId) external view returns (Order memory) {
+        return srcOrder[_orderId];
+    }
+
+    function getOrder(uint256 _orderId, uint32 _dstEid) external view returns (Order memory) {
+        bytes32 dstOrderId = keccak256(abi.encodePacked(
+            _orderId,
+            _dstEid
+        ));
+        return dstOrder[dstOrderId];
     }
 
     function createOrder(
@@ -77,6 +114,9 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
     }
 
+    /**
+     * @param _timelock _lzSend 가 전달되기 전 최소 시간 설정이라, timestamp 값을 직접 넣는게 아니라, 해당 트랜잭션이 통과된 후 부터 timelock
+     */
     function executeOrder(
         uint256 _orderId,
         uint32 _dstEid,
@@ -86,7 +126,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         bytes calldata _options
     ) external payable {
         require(msg.sender != address(0), "taker must not be zero address");
-        require(_timelock >= block.timestamp + 1200, "Requires a timelock of at least 10 minutes");
+        require(_timelock >= 3600, "Requires a timelock of at least 60 minutes");
 
         bytes32 dstOrderId = keccak256(abi.encodePacked(
             _orderId,
@@ -94,17 +134,17 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         ));
         Order storage order = dstOrder[dstOrderId];
 
-        require(dstOrder[dstOrderId].taker == address(0), "Order already filled");
-        require(dstOrder[dstOrderId].desiredAmount == _paymentAmount, "dif desiredAmount & _paymentAmount");
-        require(dstOrder[dstOrderId].status == OrderStatus.createOrderLzReceive, "Order status must be 2(OrderStatus.createOrderLzReceive)");
+        require(order.taker == address(0), "Order already filled");
+        require(order.desiredAmount == _paymentAmount, "dif desiredAmount & _paymentAmount");
+        require(order.status == OrderStatus.createOrderLzReceive, "Order status must be 2(OrderStatus.createOrderLzReceive)");
 
         order.taker = payable(msg.sender);
-        order.timelock = _timelock;
+        order.timelock = block.timestamp + _timelock;
         order.status = OrderStatus.executeOrder;
 
         bytes memory payload = abi.encodePacked(
             bytes4(keccak256("executeOrder")),
-            abi.encode(_orderId, msg.sender, srcEid, _paymentAmount, _dstEid, _desiredAmount, _timelock)
+            abi.encode(_orderId, msg.sender, srcEid, _paymentAmount, _dstEid, _desiredAmount, order.timelock)
         );
         MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
         require(msg.value >= fee.nativeFee, "Insufficient funds fee");
@@ -132,6 +172,21 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
     }
 
+    function emergencyRefundDstOrder(uint256 _orderId, uint32 _dstEid) external onlyOwner {
+        bytes32 dstOrderId = keccak256(abi.encodePacked(
+            _orderId,
+            _dstEid
+        ));
+        Order storage order = dstOrder[dstOrderId];
+
+        require(order.taker != address(0), "taker must not be a zero address");
+        require(order.timelock < block.timestamp, "Not yet expired");
+        require(order.status == OrderStatus.executeOrder, "oder status is not cancelable");
+
+        payable(order.taker).transfer(order.desiredAmount);
+        order.status = OrderStatus.canceledLzReceive;
+    }
+
     function _lzReceive(
         Origin calldata _origin,
         bytes32 /*_guid*/,
@@ -151,10 +206,9 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
             (uint256 _orderId, address _maker, uint32 _dstEid, uint256 _depositAmount, uint32 _srcEid, uint256 _desiredAmount)
             = abi.decode(_payload[4:], (uint256, address, uint32, uint256, uint32, uint256));
 
-
             require(_maker != address(0), "maker must not be zero address");
-            require(_srcEid != srcEid, "invalid src endpoint id, with payload");
-            require(_origin.srcEid != _srcEid, "invalid src endpoint id, with payload");
+            require(_srcEid == srcEid, "invalid src endpoint id, with payload");
+            require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
 
             bytes32 dstOrderId = keccak256(abi.encodePacked(
                 _orderId,
@@ -173,12 +227,12 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
                 status: OrderStatus.createOrderLzReceive
             });
         } else if (messageType == bytes4(keccak256("executeOrder"))) {
-            (uint256 _orderId, address _taker, , , uint32 _srcEid, , uint256 _timelock)
+            (uint256 _orderId, address _taker, uint32 _dstEid, , uint32 _srcEid, , uint256 _timelock)
             = abi.decode(_payload[4:], (uint256, address, uint32, uint256, uint32, uint256, uint256));
 
             require(srcOrder[_orderId].maker != address(0), "order does not exist");
-            require(_srcEid != srcEid, "invalid src endpoint id, with payload");
-            require(_origin.srcEid != _srcEid, "invalid src endpoint id, with payload");
+            require(_srcEid == srcEid, "invalid src endpoint id, with payload");
+            require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
             require(_timelock >= block.timestamp, "order has expired");
             require(srcOrder[_orderId].status == OrderStatus.createOrder, "src order status must be 1(OrderStatus.createOrder)");
 
@@ -189,6 +243,8 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
             payable(_taker).transfer(srcOrder[_orderId].depositAmount);
         } else if (messageType == bytes4(keccak256("claim"))) {
             (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
+            require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
+
             bytes32 dstOrderId = keccak256(abi.encodePacked(
                 _orderId,
                 _dstEid
@@ -199,8 +255,10 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
             dstOrder[dstOrderId].status = OrderStatus.claimLzReceive;
             payable(_maker).transfer(dstOrder[dstOrderId].desiredAmount);
-        } else if (messageType == bytes4(keccak256("canceled"))) {
+        } else if (messageType == bytes4(keccak256("cancelOrder"))) {
             (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
+            require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
+
             bytes32 dstOrderId = keccak256(abi.encodePacked(
                 _orderId,
                 _dstEid
@@ -208,9 +266,9 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
             require(dstOrder[dstOrderId].maker == _maker, "msg sender is not maker, with payload");
 
             if (dstOrder[dstOrderId].taker != address(0) && dstOrder[dstOrderId].status == OrderStatus.executeOrder) {
-                dstOrder[dstOrderId].status = OrderStatus.canceledLzReceive;
                 payable(dstOrder[dstOrderId].taker).transfer(dstOrder[dstOrderId].desiredAmount);
             }
+            dstOrder[dstOrderId].status = OrderStatus.canceledLzReceive;
         } else {
             revert("Invalid message type");
         }
