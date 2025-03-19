@@ -1,49 +1,73 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  aws-sam
+Description: aws-sam
 
-  Sample SAM Template for aws-sam
-  
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 3
 
 Resources:
-  HelloWorldFunction:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: EventWebHookAPI
+      StageName: "StageN"
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowMethods: "'GET, OPTIONS, POST, DELETE, PUT, PATCH'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+        MaxAge: "'500'"
+      Auth:
+        AddDefaultAuthorizerToCorsPreflight: false
+        AddApiKeyRequiredToCorsPreflight: false # api key 추가하고 해당 속성 때문에 하루종일 날렸음 (포스트맨에서는 정상, web 브라우저에서는 Preflight 때문에 헤더에 key 가 빠져있는 상태때문에 cors, 403 error 처럼 리턴)
+        ApiKeyRequired: true # 각 연결된 람다에서 require key 속성을 false 로 변경해야함
+      CacheClusterEnabled: true
+      CacheClusterSize: "0.5"
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Enabled: true
+  UsagePlanNoLimit:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId: !Ref Api
+          Stage: "StageN"
+  UsagePlanMapReporting:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref UsagePlanNoLimit
+
+
+  EventWebHookFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
-      CodeUri: hello-world/
-      Handler: app.lambdaHandler
+      CodeUri: app/
+      Handler: app.eventWebHook
       Runtime: nodejs20.x
       Architectures:
         - x86_64
       Events:
-        HelloWorld:
+        API:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /hello
-            Method: get
+            Path: /event
+            Method: post
+            RestApiId: !Ref Api
+            Auth:
+              ApiKeyRequired: false
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
         Minify: true
         Target: "es2020"
         Sourcemap: true
-        EntryPoints: 
+        EntryPoints:
         - app.ts
-
-Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn

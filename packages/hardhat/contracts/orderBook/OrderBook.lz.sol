@@ -30,7 +30,6 @@ contract IOrderBook {
         OrderStatus status;
     }
 
-    event CreateOrder(uint256 indexed orderId);
     event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, OrderStatus orderStatus);
     event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, OrderStatus orderStatus);
 }
@@ -94,7 +93,6 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
         emit UpdateSrcOrder(orderId, msg.sender, address(0), _depositAmount, _desiredAmount, 0, OrderStatus.createOrder);
-        emit CreateOrder(orderId);
 
         orderId++;
     }

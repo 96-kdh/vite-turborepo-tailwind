@@ -7,7 +7,6 @@ import { ethers } from "ethers";
 import { beforeTaskAction, encodePayloadViem } from "../utils";
 import { parseEther } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
-import hre from "hardhat";
 
 enum Task {
    dev = "dev", // only run local
@@ -19,7 +18,9 @@ enum Task {
 
 // npx hardhat dev
 task(Task.dev, "override npx hardhat node task").setAction(async (taskArgs, hre) => {
-   if (hre.network.config.chainId !== SupportChainIds.LOCALHOST) {
+   const chainId = hre.network.config.chainId as SupportChainIds;
+
+   if (chainId !== SupportChainIds.LOCALHOST) {
       throw new Error("only run local");
    }
 
@@ -70,10 +71,58 @@ task(Task.dev, "override npx hardhat node task").setAction(async (taskArgs, hre)
 
          console.log("✅ ignition 으로 컨트랙트 배포를 마쳤습니다.");
 
-         spawnSync("npx", ["hardhat", "subscribe"], {
-            stdio: "inherit",
-            shell: true,
-         });
+         const provider = new ethers.WebSocketProvider("ws://127.0.0.1:8545");
+         const abi = [
+            "event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
+            "event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
+         ];
+
+         const contractAddress = contractAddresses[chainId].OrderBookWithLzA;
+         const contract = new ethers.Contract(contractAddress, abi, provider);
+
+         contract.on(
+            "UpdateSrcOrder",
+            (
+               orderId: bigint,
+               maker: `0x${string}`,
+               taker: `0x${string}`,
+               depositAmount: bigint,
+               desiredAmount: bigint,
+               timelock: bigint,
+               orderStatus: bigint,
+            ) => {
+               console.log("UpdateSrcOrder event emitted");
+               console.log("orderId: ", orderId);
+               console.log("maker: ", maker);
+               console.log("taker: ", taker);
+               console.log("depositAmount: ", depositAmount);
+               console.log("desiredAmount: ", desiredAmount);
+               console.log("timelock: ", timelock);
+               console.log("orderStatus: ", orderStatus);
+            },
+         );
+
+         contract.on(
+            "UpdateDstOrder",
+            (
+               orderId: `0x${string}`,
+               maker: `0x${string}`,
+               taker: `0x${string}`,
+               depositAmount: bigint,
+               desiredAmount: bigint,
+               timelock: bigint,
+               orderStatus: bigint,
+            ) => {
+               console.log("UpdateDstOrder event emitted");
+               console.log("orderId: ", orderId);
+               console.log("maker: ", maker);
+               console.log("taker: ", taker);
+               console.log("depositAmount: ", depositAmount);
+               console.log("desiredAmount: ", desiredAmount);
+               console.log("timelock: ", timelock);
+               console.log("orderStatus: ", orderStatus);
+            },
+         );
       });
 
       ws.on("error", (err: { message: string }) => {
@@ -98,39 +147,6 @@ task(Task.mining, "run hardhat node mining")
       console.log(`${interval}ms 블록생성 시작`);
       await hre.network.provider.send("evm_setIntervalMining", [Number(interval)]);
    });
-
-// npx hardhat subscribe
-task(Task.subscribe, "run hardhat node subscribing").setAction(async (taskArgs, hre) => {
-   if (hre.network.config.chainId !== SupportChainIds.LOCALHOST) {
-      throw new Error("only run local");
-   }
-
-   const provider = new ethers.WebSocketProvider("ws://localhost:8545");
-
-   const abi = [
-      "event CreateOrder(uint256 indexed orderId)",
-      "event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
-      "event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
-   ];
-
-   const contractAddress = contractAddresses[hre.network.config.chainId].OrderBookWithLzA;
-   const contract = new ethers.Contract(contractAddress, abi, provider);
-   const baseContract = new ethers.BaseContract(contractAddress, abi, provider);
-
-   await baseContract.on("CreateOrder", (event) => {
-      console.log("UpdateSrcOrder 이벤트 감지됨!12");
-      console.log(event);
-   });
-
-   console.log("baseContract.on");
-
-   await contract.on("UpdateSrcOrder", (event) => {
-      console.log("UpdateSrcOrder 이벤트 감지됨!23");
-      console.log(event);
-   });
-
-   console.log("contract.on");
-});
 
 // npx hardhat createOrder
 task(Task.createOrder, "createOrder").setAction(async (taskArgs, hre) =>

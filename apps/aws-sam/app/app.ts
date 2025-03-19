@@ -1,11 +1,13 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
-export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const eventWebHook = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
    try {
+      console.log(event);
+
       return {
          statusCode: 200,
          body: JSON.stringify({
-            message: "hello world",
+            message: "hello world aws-sam",
          }),
       };
    } catch (err) {
