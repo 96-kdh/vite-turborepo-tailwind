@@ -1,7 +1,7 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { padHex, parseEther, keccak256, encodeAbiParameters, toHex, zeroAddress, encodePacked } from "viem";
+import { padHex, parseEther, keccak256, encodeAbiParameters, toHex, zeroAddress } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 import {
    MessagingFeeStructOutput,
