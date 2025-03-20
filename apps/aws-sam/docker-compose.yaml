@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack
+    container_name: localstack
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    environment:
+      - SERVICES=dynamodb
+      - DEFAULT_REGION=localhost
+
+  init-dynamodb:
+    image: amazon/aws-cli
+    depends_on:
+      - localstack
+    entrypoint: >
+      /bin/sh -c "echo Waiting for LocalStack to be ready... && sleep 10 && aws --endpoint-url=http://localstack:4566 --region localhost dynamodb create-table --table-name MyTable --attribute-definitions AttributeName=Id,AttributeType=S --key-schema AttributeName=Id,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 && echo DynamoDB 테이블 생성 완료."

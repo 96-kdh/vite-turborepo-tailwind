@@ -3,16 +3,16 @@ import { spawn, spawnSync } from "child_process";
 import WebSocket from "ws";
 
 import { contractAddresses, EndpointIds, SupportChainIds } from "../constants";
-import { ethers } from "ethers";
+import { ContractEventPayload, ethers } from "ethers";
 import { beforeTaskAction, encodePayloadViem } from "../utils";
 import { parseEther } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
+import { AlchemyWebhookPayload } from "../types";
 
 enum Task {
    dev = "dev", // only run local
    mining = "mining", // only run local
 
-   subscribe = "subscribe",
    createOrder = "createOrder",
 }
 
@@ -71,58 +71,7 @@ task(Task.dev, "override npx hardhat node task").setAction(async (taskArgs, hre)
 
          console.log("✅ ignition 으로 컨트랙트 배포를 마쳤습니다.");
 
-         const provider = new ethers.WebSocketProvider("ws://127.0.0.1:8545");
-         const abi = [
-            "event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
-            "event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
-         ];
-
-         const contractAddress = contractAddresses[chainId].OrderBookWithLzA;
-         const contract = new ethers.Contract(contractAddress, abi, provider);
-
-         contract.on(
-            "UpdateSrcOrder",
-            (
-               orderId: bigint,
-               maker: `0x${string}`,
-               taker: `0x${string}`,
-               depositAmount: bigint,
-               desiredAmount: bigint,
-               timelock: bigint,
-               orderStatus: bigint,
-            ) => {
-               console.log("UpdateSrcOrder event emitted");
-               console.log("orderId: ", orderId);
-               console.log("maker: ", maker);
-               console.log("taker: ", taker);
-               console.log("depositAmount: ", depositAmount);
-               console.log("desiredAmount: ", desiredAmount);
-               console.log("timelock: ", timelock);
-               console.log("orderStatus: ", orderStatus);
-            },
-         );
-
-         contract.on(
-            "UpdateDstOrder",
-            (
-               orderId: `0x${string}`,
-               maker: `0x${string}`,
-               taker: `0x${string}`,
-               depositAmount: bigint,
-               desiredAmount: bigint,
-               timelock: bigint,
-               orderStatus: bigint,
-            ) => {
-               console.log("UpdateDstOrder event emitted");
-               console.log("orderId: ", orderId);
-               console.log("maker: ", maker);
-               console.log("taker: ", taker);
-               console.log("depositAmount: ", depositAmount);
-               console.log("desiredAmount: ", desiredAmount);
-               console.log("timelock: ", timelock);
-               console.log("orderStatus: ", orderStatus);
-            },
-         );
+         subscribeEventAll(chainId);
       });
 
       ws.on("error", (err: { message: string }) => {
@@ -196,3 +145,152 @@ task(Task.createOrder, "createOrder").setAction(async (taskArgs, hre) =>
       });
    }),
 );
+
+function subscribeEventAll(chainId: SupportChainIds) {
+   const provider = new ethers.WebSocketProvider("ws://127.0.0.1:8545");
+   const abi = [
+      "event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
+      "event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
+   ];
+
+   const contractAddress = contractAddresses[chainId].OrderBookWithLzA;
+   const contract = new ethers.Contract(contractAddress, abi, provider);
+
+   contract.on(
+      "UpdateSrcOrder",
+      (
+         orderId: bigint,
+         maker: `0x${string}`,
+         taker: `0x${string}`,
+         depositAmount: bigint,
+         desiredAmount: bigint,
+         timelock: bigint,
+         orderStatus: bigint,
+         event: ContractEventPayload,
+      ) => {
+         const data: AlchemyWebhookPayload = {
+            webhookId: "wh_wclh9c0e3nf3t4wn",
+            id: "whevt_1i58wb1ww2u3jzea",
+            createdAt: "2025-03-20T12:57:02.661Z",
+            type: "GRAPHQL",
+            event: {
+               data: {
+                  block: {
+                     hash: event.log.blockHash,
+                     number: event.log.blockNumber,
+                     timestamp: Math.floor(Date.now() / 1000),
+                     logs: [
+                        {
+                           data: event.log.data,
+                           topics: event.log.topics,
+                           index: event.log.index,
+                           account: {
+                              address: event.log.address,
+                           },
+                           transaction: {
+                              hash: event.log.transactionHash,
+                              nonce: 0,
+                              index: event.log.transactionIndex,
+                              gasPrice: "",
+                              maxFeePerGas: null,
+                              maxPriorityFeePerGas: null,
+                              gas: 0,
+                              status: 0,
+                              gasUsed: 0,
+                              cumulativeGasUsed: 0,
+                              effectiveGasPrice: "",
+                              createdContract: null,
+                           },
+                        },
+                     ],
+                  },
+               },
+               sequenceNumber: "",
+               network: "LOCALHOST",
+            },
+         };
+         fetch("http://127.0.0.1:4000/event", {
+            method: "POST",
+            body: JSON.stringify(data),
+         });
+
+         console.log("UpdateSrcOrder event emitted");
+         console.log("orderId: ", orderId);
+         console.log("maker: ", maker);
+         console.log("taker: ", taker);
+         console.log("depositAmount: ", depositAmount);
+         console.log("desiredAmount: ", desiredAmount);
+         console.log("timelock: ", timelock);
+         console.log("orderStatus: ", orderStatus);
+      },
+   );
+
+   contract.on(
+      "UpdateDstOrder",
+      (
+         orderId: `0x${string}`,
+         maker: `0x${string}`,
+         taker: `0x${string}`,
+         depositAmount: bigint,
+         desiredAmount: bigint,
+         timelock: bigint,
+         orderStatus: bigint,
+         event: ContractEventPayload,
+      ) => {
+         const data: AlchemyWebhookPayload = {
+            webhookId: "wh_wclh9c0e3nf3t4wn",
+            id: "whevt_1i58wb1ww2u3jzea",
+            createdAt: "2025-03-20T12:57:02.661Z",
+            type: "GRAPHQL",
+            event: {
+               data: {
+                  block: {
+                     hash: event.log.blockHash,
+                     number: event.log.blockNumber,
+                     timestamp: Math.floor(Date.now() / 1000),
+                     logs: [
+                        {
+                           data: event.log.data,
+                           topics: event.log.topics,
+                           index: event.log.index,
+                           account: {
+                              address: event.log.address,
+                           },
+                           transaction: {
+                              hash: event.log.transactionHash,
+                              nonce: 0,
+                              index: event.log.transactionIndex,
+                              gasPrice: "",
+                              maxFeePerGas: null,
+                              maxPriorityFeePerGas: null,
+                              gas: 0,
+                              status: 0,
+                              gasUsed: 0,
+                              cumulativeGasUsed: 0,
+                              effectiveGasPrice: "",
+                              createdContract: null,
+                           },
+                        },
+                     ],
+                  },
+               },
+               sequenceNumber: "",
+               network: "LOCALHOST",
+            },
+         };
+         fetch("http://127.0.0.1:4000/event", {
+            method: "POST",
+            body: JSON.stringify(data),
+         });
+
+         console.log("UpdateDstOrder event emitted");
+         console.log("orderId: ", orderId);
+         console.log("maker: ", maker);
+         console.log("taker: ", taker);
+         console.log("depositAmount: ", depositAmount);
+         console.log("desiredAmount: ", desiredAmount);
+         console.log("timelock: ", timelock);
+         console.log("orderStatus: ", orderStatus);
+      },
+   );
+}

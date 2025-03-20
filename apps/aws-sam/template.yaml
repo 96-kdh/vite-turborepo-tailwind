@@ -63,6 +63,9 @@ Resources:
             RestApiId: !Ref Api
             Auth:
               ApiKeyRequired: false
+      Environment:
+        Variables:
+          NODE_ENV: prod
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
