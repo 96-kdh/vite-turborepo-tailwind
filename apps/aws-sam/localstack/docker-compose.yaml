@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,sqs
+      - DYNAMODB_SHARE_DB=1
