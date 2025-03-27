@@ -8,6 +8,17 @@ Globals:
     Timeout: 3
 
 Resources:
+  EventQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: eventQueue.fifo
+      VisibilityTimeout: 30
+      DelaySeconds: 0
+      ReceiveMessageWaitTimeSeconds: 20
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+
   Api:
     Type: AWS::Serverless::Api
     Properties:
@@ -74,3 +85,30 @@ Resources:
         Sourcemap: true
         EntryPoints:
         - app.ts
+  EventConsumerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/
+      Handler: app.sqsHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Timeout: 30
+      MemorySize: 1024
+      Events:
+        SQSQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventQueue.Arn
+            BatchSize: 20
+            Enabled: true
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: EventQueue.fifo
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints:
+          - app.ts

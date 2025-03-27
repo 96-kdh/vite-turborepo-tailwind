@@ -129,7 +129,7 @@ resource "aws_sqs_queue" "eventQueue" {
   name = "eventQueue.fifo"
   delay_seconds = 0 // default 0
   receive_wait_time_seconds = 20 //
-  visibility_timeout_seconds = 30 // default 30
+  visibility_timeout_seconds = 20 // default 30
   fifo_queue = true
   content_based_deduplication = false
 }

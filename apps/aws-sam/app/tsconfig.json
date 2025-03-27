@@ -1,3 +1,12 @@
 {
-    "extends": "@repo/typescript-config/base.json"
+   "extends": "@repo/typescript-config/base.json",
+   "compilerOptions": {
+      "target": "es2020",
+      "module": "commonjs",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "outDir": "dist"
+   },
+   "include": ["app.ts"]
 }

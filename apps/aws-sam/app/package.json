@@ -3,7 +3,7 @@
    "version": "1.0.0",
    "license": "MIT",
    "scripts": {
-      "dev": "cd .. && sam local start-api --port 4000 --env-vars env.local.json",
+      "dev": "ts-node scripts/pollingSqsAndInvokeLambda.ts",
       "unit": "jest",
       "lint": "eslint '*.ts' --quiet --fix",
       "compile": "tsc",
@@ -15,6 +15,7 @@
       "@aws-sdk/lib-dynamodb": "^3.767.0"
    },
    "devDependencies": {
+      "@aws-sdk/client-lambda": "^3.774.0",
       "@jest/globals": "^29.2.0",
       "@repo/eslint-config": "file:../../../packages/eslint-config",
       "@repo/hardhat": "file:../../../packages/hardhat",

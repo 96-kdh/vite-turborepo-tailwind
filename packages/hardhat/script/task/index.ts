@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 import { spawn, spawnSync } from "child_process";
 import WebSocket from "ws";
+import { LambdaClient, InvokeCommand, InvokeCommandInput } from "@aws-sdk/client-lambda";
 
 import { contractAddresses, EndpointIds, SupportChainIds } from "../constants";
 import { ContractEventPayload, ethers } from "ethers";
@@ -209,10 +210,25 @@ function subscribeEventAll(chainId: SupportChainIds) {
                network: "LOCALHOST",
             },
          };
-         fetch("http://127.0.0.1:4000/event", {
-            method: "POST",
-            body: JSON.stringify(data),
-         });
+
+         // fetch("http://127.0.0.1:3001/event", {
+         //    method: "POST",
+         //    body: JSON.stringify(data),
+         // });
+
+         const config = {
+            region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
+            endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
+         };
+         const client = new LambdaClient(config);
+         const input: InvokeCommandInput = {
+            FunctionName: "EventWebHookFunction",
+            Payload: JSON.stringify({
+               body: JSON.stringify(data),
+            }),
+         };
+         const command = new InvokeCommand(input);
+         client.send(command).then(console.log).catch(console.error);
 
          console.log("UpdateSrcOrder event emitted");
          console.log("orderId: ", orderId);
@@ -278,10 +294,25 @@ function subscribeEventAll(chainId: SupportChainIds) {
                network: "LOCALHOST",
             },
          };
-         fetch("http://127.0.0.1:4000/event", {
-            method: "POST",
-            body: JSON.stringify(data),
-         });
+
+         // fetch("http://127.0.0.1:4000/event", {
+         //    method: "POST",
+         //    body: JSON.stringify(data),
+         // });
+
+         const config = {
+            region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
+            endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
+         };
+         const client = new LambdaClient(config);
+         const input: InvokeCommandInput = {
+            FunctionName: "EventWebHookFunction",
+            Payload: JSON.stringify({
+               body: JSON.stringify(data),
+            }),
+         };
+         const command = new InvokeCommand(input);
+         client.send(command).then(console.log).catch(console.error);
 
          console.log("UpdateDstOrder event emitted");
          console.log("orderId: ", orderId);
