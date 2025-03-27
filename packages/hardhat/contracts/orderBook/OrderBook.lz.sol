@@ -102,6 +102,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
         require(order.status == OrderStatus.createOrder, "order status must be 1(OrderStatus.createOrder)");
         require(order.maker == msg.sender, "msg.sender is not maker");
+        require(order.taker == address(0), "taker must be zero address");
 
         bytes memory payload = abi.encodePacked(
             bytes4(keccak256("cancelOrder")), abi.encode(_orderId, msg.sender, srcEid)
@@ -113,6 +114,8 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         payable(order.maker).transfer(order.depositAmount);
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+
+        emit UpdateSrcOrder(_orderId, msg.sender, address(0), order.depositAmount, order.desiredAmount, 0, OrderStatus.canceled);
     }
 
     /**
@@ -153,6 +156,8 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         require(_paymentAmount == lockedAmount, "dif _paymentAmount & lockedAmount");
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+
+        emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.executeOrder);
     }
 
     function claim(uint256 _orderId, uint32 _dstEid, bytes calldata _options) external payable {
@@ -171,6 +176,8 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         require(msg.value == fee.nativeFee, "dif msg.value & fee.nativeFee");
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
+
+        emit UpdateSrcOrder(_orderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.claim);
     }
 
     function emergencyRefundDstOrder(uint256 _orderId, uint32 _dstEid) external onlyOwner {
@@ -186,6 +193,8 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
         payable(order.taker).transfer(order.desiredAmount);
         order.status = OrderStatus.canceledLzReceive;
+
+        emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.canceledLzReceive);
     }
 
     function _lzReceive(
@@ -227,21 +236,26 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
                 timelock: 0,
                 status: OrderStatus.createOrderLzReceive
             });
+            emit UpdateDstOrder(dstOrderId, _maker, address(0), _depositAmount, _desiredAmount, 0, OrderStatus.createOrderLzReceive);
         } else if (messageType == bytes4(keccak256("executeOrder"))) {
             (uint256 _orderId, address _taker, uint32 _dstEid, , uint32 _srcEid, , uint256 _timelock)
             = abi.decode(_payload[4:], (uint256, address, uint32, uint256, uint32, uint256, uint256));
 
-            require(srcOrder[_orderId].maker != address(0), "order does not exist");
+            Order storage order = srcOrder[_orderId];
+
+            require(order.maker != address(0), "order does not exist");
             require(_srcEid == srcEid, "invalid src endpoint id, with payload");
             require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
             require(_timelock >= block.timestamp, "order has expired");
-            require(srcOrder[_orderId].status == OrderStatus.createOrder, "src order status must be 1(OrderStatus.createOrder)");
+            require(order.status == OrderStatus.createOrder, "src order status must be 1(OrderStatus.createOrder)");
 
-            srcOrder[_orderId].timelock = _timelock;
-            srcOrder[_orderId].taker = payable(_taker);
-            srcOrder[_orderId].status = OrderStatus.executeOrderLzReceive;
+            order.timelock = _timelock;
+            order.taker = payable(_taker);
+            order.status = OrderStatus.executeOrderLzReceive;
 
-            payable(_taker).transfer(srcOrder[_orderId].depositAmount);
+            payable(_taker).transfer(order.depositAmount);
+
+            emit UpdateSrcOrder(_orderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.executeOrderLzReceive);
         } else if (messageType == bytes4(keccak256("claim"))) {
             (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
             require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
@@ -250,12 +264,15 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
                 _orderId,
                 _dstEid
             ));
+            Order storage order = dstOrder[dstOrderId];
 
-            require(dstOrder[dstOrderId].maker == _maker, "msg sender is not maker, with payload");
-            require(dstOrder[dstOrderId].status == OrderStatus.executeOrder, "status must be 3(OrderStatus.executeOrder)");
+            require(order.maker == _maker, "msg sender is not maker, with payload");
+            require(order.status == OrderStatus.executeOrder, "status must be 3(OrderStatus.executeOrder)");
 
-            dstOrder[dstOrderId].status = OrderStatus.claimLzReceive;
-            payable(_maker).transfer(dstOrder[dstOrderId].desiredAmount);
+            order.status = OrderStatus.claimLzReceive;
+            payable(_maker).transfer(order.desiredAmount);
+
+            emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.claimLzReceive);
         } else if (messageType == bytes4(keccak256("cancelOrder"))) {
             (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
             require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
@@ -264,12 +281,16 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
                 _orderId,
                 _dstEid
             ));
-            require(dstOrder[dstOrderId].maker == _maker, "msg sender is not maker, with payload");
+            Order storage order = dstOrder[dstOrderId];
 
-            if (dstOrder[dstOrderId].taker != address(0) && dstOrder[dstOrderId].status == OrderStatus.executeOrder) {
-                payable(dstOrder[dstOrderId].taker).transfer(dstOrder[dstOrderId].desiredAmount);
+            require(order.maker == _maker, "msg sender is not maker, with payload");
+
+            if (order.taker != address(0) && order.status == OrderStatus.executeOrder) {
+                payable(order.taker).transfer(order.desiredAmount);
             }
-            dstOrder[dstOrderId].status = OrderStatus.canceledLzReceive;
+            order.status = OrderStatus.canceledLzReceive;
+
+            emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.canceledLzReceive);
         } else {
             revert("Invalid message type");
         }

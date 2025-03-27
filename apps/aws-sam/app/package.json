@@ -3,7 +3,7 @@
    "version": "1.0.0",
    "license": "MIT",
    "scripts": {
-      "dev": "ts-node scripts/pollingSqsAndInvokeLambda.ts",
+      "dev": "ts-node scripts/pollingSqsAndInvokeLambda.ts && cd .. && sam local start-lambda --env-vars env.local.json",
       "unit": "jest",
       "lint": "eslint '*.ts' --quiet --fix",
       "compile": "tsc",
@@ -12,7 +12,10 @@
    "dependencies": {
       "@aws-sdk/client-dynamodb": "^3.767.0",
       "@aws-sdk/client-sqs": "^3.758.0",
-      "@aws-sdk/lib-dynamodb": "^3.767.0"
+      "@aws-sdk/lib-dynamodb": "^3.767.0",
+      "alchemy-sdk": "^3.5.6",
+      "ethers": "^6.13.5",
+      "esbuild": "^0.14.54"
    },
    "devDependencies": {
       "@aws-sdk/client-lambda": "^3.774.0",
@@ -23,7 +26,6 @@
       "@types/aws-lambda": "^8.10.92",
       "@types/jest": "^29.2.0",
       "@types/node": "^20.5.7",
-      "esbuild": "^0.14.54",
       "jest": "^29.2.1",
       "ts-jest": "^29.0.5",
       "ts-node": "^10.9.1"

@@ -57,8 +57,6 @@ async function pollQueue() {
                };
                const command = new InvokeCommand(input);
                await client.send(command);
-
-               // await sqsHandler(event, {} as never, () => {});
                console.log("Lambda 함수가 성공적으로 메시지를 처리했습니다.");
 
                // 처리된 메시지를 SQS에서 삭제합니다.

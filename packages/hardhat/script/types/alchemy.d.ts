@@ -1,3 +1,5 @@
+import { SupportChainIds, SupportNetwork } from "../constants";
+
 export interface AlchemyWebhookPayload {
    webhookId: string; // "wh_wclh9c0e3nf3t4wn",
    id: string; // "whevt_1i58wb1ww2u3jzea",
@@ -11,31 +13,40 @@ export interface AlchemyWebhookPayloadEvent {
       block: AlchemyWebhookPayloadEventBlockData;
    };
    sequenceNumber: string;
-   network: string;
+   network: SupportNetwork;
+}
+
+export interface SqsEventMessageBody {
+   blockNumber: number;
+   timestamp: number;
+   chainId: SupportChainIds | 0;
+   log: AlchemyWebhookPayloadEventLogData;
 }
 
 export interface AlchemyWebhookPayloadEventBlockData {
    hash: string;
    number: number;
    timestamp: number;
-   logs: {
-      data: string;
-      topics: readonly string[];
+   logs: AlchemyWebhookPayloadEventLogData[];
+}
+
+interface AlchemyWebhookPayloadEventLogData {
+   data: string;
+   topics: readonly string[];
+   index: number;
+   account: { address: string };
+   transaction: {
+      hash: string;
+      nonce: number;
       index: number;
-      account: { address: string };
-      transaction: {
-         hash: string;
-         nonce: number;
-         index: number;
-         gasPrice: string;
-         maxFeePerGas: null;
-         maxPriorityFeePerGas: null;
-         gas: number;
-         status: number;
-         gasUsed: number;
-         cumulativeGasUsed: number;
-         effectiveGasPrice: string;
-         createdContract: null;
-      };
-   }[];
+      gasPrice: string;
+      maxFeePerGas: null;
+      maxPriorityFeePerGas: null;
+      gas: number;
+      status: number;
+      gasUsed: number;
+      cumulativeGasUsed: number;
+      effectiveGasPrice: string;
+      createdContract: null;
+   };
 }

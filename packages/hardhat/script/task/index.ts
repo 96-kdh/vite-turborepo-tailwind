@@ -211,18 +211,13 @@ function subscribeEventAll(chainId: SupportChainIds) {
             },
          };
 
-         // fetch("http://127.0.0.1:3001/event", {
-         //    method: "POST",
-         //    body: JSON.stringify(data),
-         // });
-
          const config = {
             region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
             endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
          };
          const client = new LambdaClient(config);
          const input: InvokeCommandInput = {
-            FunctionName: "EventWebHookFunction",
+            FunctionName: "EventProducerFunction",
             Payload: JSON.stringify({
                body: JSON.stringify(data),
             }),
@@ -295,18 +290,13 @@ function subscribeEventAll(chainId: SupportChainIds) {
             },
          };
 
-         // fetch("http://127.0.0.1:4000/event", {
-         //    method: "POST",
-         //    body: JSON.stringify(data),
-         // });
-
          const config = {
             region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
             endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
          };
          const client = new LambdaClient(config);
          const input: InvokeCommandInput = {
-            FunctionName: "EventWebHookFunction",
+            FunctionName: "EventProducerFunction",
             Payload: JSON.stringify({
                body: JSON.stringify(data),
             }),

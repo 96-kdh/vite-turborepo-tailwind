@@ -1,3 +1,5 @@
+import { Network } from "alchemy-sdk";
+
 export enum SupportChainIds {
    LOCALHOST = 31337,
    // BSC = 56,
@@ -5,6 +7,13 @@ export enum SupportChainIds {
    // BASE_SEPOLIA = 84532,
    // LINEA_SEPOLIA = 59141,
 }
+
+export type SupportNetwork = Network | "LOCALHOST";
+
+export const NetworkToChainId: Partial<Record<SupportNetwork, SupportChainIds>> = {
+   LOCALHOST: SupportChainIds.LOCALHOST,
+   // [Network.ETH_SEPOLIA]: SupportChainIds.LOCALHOST,
+};
 
 export enum ContractNames {
    MockEndpointV2A = "MockEndpointV2A",
