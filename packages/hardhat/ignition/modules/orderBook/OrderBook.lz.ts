@@ -1,7 +1,8 @@
 import hre from "hardhat";
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { contractAddresses, EndpointIds, ownerAddress, SupportChainIds } from "../../../script";
 import { padHex } from "viem";
+
+import { contractAddresses, EndpointIds, ownerAddress, SupportChainIds } from "../../../script";
 
 const OrderBookModule = buildModule("OrderBookModule", function (m) {
    const chainId = hre.network.config.chainId as SupportChainIds;

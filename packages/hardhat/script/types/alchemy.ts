@@ -1,4 +1,5 @@
-import { SupportChainIds, SupportNetwork } from "../constants";
+import { SupportChainIds } from "../constants";
+import { SupportNetwork } from "./network";
 
 export interface AlchemyWebhookPayload {
    webhookId: string; // "wh_wclh9c0e3nf3t4wn",
@@ -34,7 +35,7 @@ interface AlchemyWebhookPayloadEventLogData {
    data: string;
    topics: readonly string[];
    index: number;
-   account: { address: string };
+   account: { address: string }; // emitted event contract address
    transaction: {
       hash: string;
       nonce: number;
@@ -48,5 +49,7 @@ interface AlchemyWebhookPayloadEventLogData {
       cumulativeGasUsed: number;
       effectiveGasPrice: string;
       createdContract: null;
+      from: { address: string }; // msg sender
+      to: { address: string }; // execute contract address
    };
 }

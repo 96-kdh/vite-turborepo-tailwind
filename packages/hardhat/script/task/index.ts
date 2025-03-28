@@ -3,10 +3,10 @@ import { spawn, spawnSync } from "child_process";
 import WebSocket from "ws";
 import { LambdaClient, InvokeCommand, InvokeCommandInput } from "@aws-sdk/client-lambda";
 
-import { contractAddresses, EndpointIds, SupportChainIds } from "../constants";
+import { contractAddresses, EndpointIds, SupportChainIds, SupportedEvent, SupportedEventABI } from "../constants";
 import { ContractEventPayload, ethers } from "ethers";
 import { beforeTaskAction, encodePayloadViem } from "../utils";
-import { parseEther } from "viem";
+import { isAddress, parseEther } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 import { AlchemyWebhookPayload } from "../types";
 
@@ -15,6 +15,7 @@ enum Task {
    mining = "mining", // only run local
 
    createOrder = "createOrder",
+   sendPacket = "sendPacket",
 }
 
 // npx hardhat dev
@@ -98,220 +99,145 @@ task(Task.mining, "run hardhat node mining")
       await hre.network.provider.send("evm_setIntervalMining", [Number(interval)]);
    });
 
-// npx hardhat createOrder
-task(Task.createOrder, "createOrder").setAction(async (taskArgs, hre) =>
-   beforeTaskAction(taskArgs, hre, async () => {
-      const chainId = hre.network.config.chainId as SupportChainIds;
-      const [ownerA] = await hre.viem.getWalletClients();
+// npx hardhat createOrder --ca 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+task(Task.createOrder, "createOrder")
+   .addOptionalParam("ca", "contract address", "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9")
+   .setAction(async ({ ca }, hre) =>
+      beforeTaskAction({ ca }, hre, async () => {
+         if (!isAddress(ca)) throw new Error("not address --ca");
 
-      console.log("ownerA: ", ownerA.account.address);
-      console.log("address: ", contractAddresses[chainId].OrderBookWithLzA);
+         const chainId = hre.network.config.chainId as SupportChainIds;
+         const [ownerA] = await hre.viem.getWalletClients();
 
-      const OrderBookWithLz = await hre.viem.getContractAt(
-         "OrderBookWithLz",
-         contractAddresses[chainId].OrderBookWithLzA,
-      );
+         console.log("ownerA: ", ownerA.account.address);
+         console.log("address: ", contractAddresses[chainId].OrderBookWithLzA);
 
-      const depositAmount = parseEther("1");
-      const desiredAmount = parseEther("2");
+         const OrderBookWithLz = await hre.viem.getContractAt(
+            "OrderBookWithLz",
+            contractAddresses[chainId].OrderBookWithLzA,
+         );
 
-      const { CreateOrder } = encodePayloadViem();
+         const depositAmount = parseEther("1");
+         const desiredAmount = parseEther("2");
 
-      // LayerZero 실행 옵션
-      const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
-      const createPayload = CreateOrder({
-         orderId: 0n,
-         sender: ownerA.account.address,
-         srcEid: EndpointIds.LOCALHOST__A,
-         depositAmount,
-         dstEid: EndpointIds.LOCALHOST__B,
-         desiredAmount,
-      });
+         const { CreateOrder } = encodePayloadViem();
 
-      // 크로스체인 수수료 견적
-      const { nativeFee } = (await OrderBookWithLz.read.quote([
-         EndpointIds.LOCALHOST__B,
-         createPayload,
-         options,
-         false,
-      ])) as {
-         nativeFee: bigint;
-         lzTokenFee: bigint;
-      };
+         // LayerZero 실행 옵션
+         const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
+         const createPayload = CreateOrder({
+            orderId: 0n,
+            sender: ownerA.account.address,
+            srcEid: EndpointIds.LOCALHOST__A,
+            depositAmount,
+            dstEid: EndpointIds.LOCALHOST__B,
+            desiredAmount,
+         });
 
-      console.log("nativeFee: ", nativeFee);
+         // 크로스체인 수수료 견적
+         const { nativeFee } = (await OrderBookWithLz.read.quote([
+            EndpointIds.LOCALHOST__B,
+            createPayload,
+            options,
+            false,
+         ])) as {
+            nativeFee: bigint;
+            lzTokenFee: bigint;
+         };
 
-      await OrderBookWithLz.write.createOrder([EndpointIds.LOCALHOST__B, depositAmount, desiredAmount, options], {
-         value: depositAmount + nativeFee,
-      });
-   }),
-);
+         console.log("nativeFee: ", nativeFee);
 
-function subscribeEventAll(chainId: SupportChainIds) {
+         await OrderBookWithLz.write.createOrder([EndpointIds.LOCALHOST__B, depositAmount, desiredAmount, options], {
+            value: depositAmount + nativeFee,
+         });
+      }),
+   );
+
+// npx hardhat sendPacket --ca 0x5FbDB2315678afecb367f032d93F642f64180aa3
+task(Task.sendPacket, "run hardhat node mining")
+   .addOptionalParam("ca", "contract address", "0x5FbDB2315678afecb367f032d93F642f64180aa3")
+   .setAction(async ({ ca }, hre) =>
+      beforeTaskAction({ ca }, hre, async () => {
+         if (!isAddress(ca)) throw new Error("not address --ca");
+
+         const EndpointV2Mock = await hre.viem.getContractAt("EndpointV2MockPassiveReceivePayload", ca);
+         await EndpointV2Mock.write.releaseQueuedMessages([]);
+      }),
+   );
+
+async function subscribeEventAll(chainId: SupportChainIds) {
    const provider = new ethers.WebSocketProvider("ws://127.0.0.1:8545");
-   const abi = [
-      "event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
-      "event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, uint8 orderStatus)",
-   ];
+   const [owner] = await provider.listAccounts();
 
-   const contractAddress = contractAddresses[chainId].OrderBookWithLzA;
-   const contract = new ethers.Contract(contractAddress, abi, provider);
+   const contractAddress = [contractAddresses[chainId].OrderBookWithLzA, contractAddresses[chainId].OrderBookWithLzB];
 
-   contract.on(
-      "UpdateSrcOrder",
-      (
-         orderId: bigint,
-         maker: `0x${string}`,
-         taker: `0x${string}`,
-         depositAmount: bigint,
-         desiredAmount: bigint,
-         timelock: bigint,
-         orderStatus: bigint,
-         event: ContractEventPayload,
-      ) => {
-         const data: AlchemyWebhookPayload = {
-            webhookId: "wh_wclh9c0e3nf3t4wn",
-            id: "whevt_1i58wb1ww2u3jzea",
-            createdAt: "2025-03-20T12:57:02.661Z",
-            type: "GRAPHQL",
-            event: {
-               data: {
-                  block: {
-                     hash: event.log.blockHash,
-                     number: event.log.blockNumber,
-                     timestamp: Math.floor(Date.now() / 1000),
-                     logs: [
-                        {
-                           data: event.log.data,
-                           topics: event.log.topics,
-                           index: event.log.index,
-                           account: {
-                              address: event.log.address,
+   for (const address of contractAddress) {
+      const contract = new ethers.Contract(address, SupportedEventABI, provider);
+
+      for (const eventName of Object.keys(SupportedEvent)) {
+         console.log("eventName: ", eventName, " & contract address: ", address);
+
+         contract.on(eventName, async (...arg) => {
+            console.log("event emit name is: ", eventName, " & contract address: ", address);
+
+            const event: ContractEventPayload = arg[arg.length - 1];
+            const data: AlchemyWebhookPayload = {
+               webhookId: "wh_wclh9c0e3nf3t4wn",
+               id: "whevt_1i58wb1ww2u3jzea",
+               createdAt: "2025-03-20T12:57:02.661Z",
+               type: "GRAPHQL",
+               event: {
+                  data: {
+                     block: {
+                        hash: event.log.blockHash,
+                        number: event.log.blockNumber,
+                        timestamp: Math.floor(Date.now() / 1000),
+                        logs: [
+                           {
+                              data: event.log.data,
+                              topics: event.log.topics,
+                              index: event.log.index,
+                              account: {
+                                 address: event.log.address,
+                              },
+                              transaction: {
+                                 hash: event.log.transactionHash,
+                                 nonce: 0,
+                                 index: event.log.transactionIndex,
+                                 gasPrice: "",
+                                 maxFeePerGas: null,
+                                 maxPriorityFeePerGas: null,
+                                 from: { address: owner.address },
+                                 to: { address: address },
+                                 gas: 0,
+                                 status: 0,
+                                 gasUsed: 0,
+                                 cumulativeGasUsed: 0,
+                                 effectiveGasPrice: "",
+                                 createdContract: null,
+                              },
                            },
-                           transaction: {
-                              hash: event.log.transactionHash,
-                              nonce: 0,
-                              index: event.log.transactionIndex,
-                              gasPrice: "",
-                              maxFeePerGas: null,
-                              maxPriorityFeePerGas: null,
-                              gas: 0,
-                              status: 0,
-                              gasUsed: 0,
-                              cumulativeGasUsed: 0,
-                              effectiveGasPrice: "",
-                              createdContract: null,
-                           },
-                        },
-                     ],
+                        ],
+                     },
                   },
+                  sequenceNumber: "",
+                  network: "LOCALHOST",
                },
-               sequenceNumber: "",
-               network: "LOCALHOST",
-            },
-         };
+            };
 
-         const config = {
-            region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
-            endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
-         };
-         const client = new LambdaClient(config);
-         const input: InvokeCommandInput = {
-            FunctionName: "EventProducerFunction",
-            Payload: JSON.stringify({
-               body: JSON.stringify(data),
-            }),
-         };
-         const command = new InvokeCommand(input);
-         client.send(command).then(console.log).catch(console.error);
-
-         console.log("UpdateSrcOrder event emitted");
-         console.log("orderId: ", orderId);
-         console.log("maker: ", maker);
-         console.log("taker: ", taker);
-         console.log("depositAmount: ", depositAmount);
-         console.log("desiredAmount: ", desiredAmount);
-         console.log("timelock: ", timelock);
-         console.log("orderStatus: ", orderStatus);
-      },
-   );
-
-   contract.on(
-      "UpdateDstOrder",
-      (
-         orderId: `0x${string}`,
-         maker: `0x${string}`,
-         taker: `0x${string}`,
-         depositAmount: bigint,
-         desiredAmount: bigint,
-         timelock: bigint,
-         orderStatus: bigint,
-         event: ContractEventPayload,
-      ) => {
-         const data: AlchemyWebhookPayload = {
-            webhookId: "wh_wclh9c0e3nf3t4wn",
-            id: "whevt_1i58wb1ww2u3jzea",
-            createdAt: "2025-03-20T12:57:02.661Z",
-            type: "GRAPHQL",
-            event: {
-               data: {
-                  block: {
-                     hash: event.log.blockHash,
-                     number: event.log.blockNumber,
-                     timestamp: Math.floor(Date.now() / 1000),
-                     logs: [
-                        {
-                           data: event.log.data,
-                           topics: event.log.topics,
-                           index: event.log.index,
-                           account: {
-                              address: event.log.address,
-                           },
-                           transaction: {
-                              hash: event.log.transactionHash,
-                              nonce: 0,
-                              index: event.log.transactionIndex,
-                              gasPrice: "",
-                              maxFeePerGas: null,
-                              maxPriorityFeePerGas: null,
-                              gas: 0,
-                              status: 0,
-                              gasUsed: 0,
-                              cumulativeGasUsed: 0,
-                              effectiveGasPrice: "",
-                              createdContract: null,
-                           },
-                        },
-                     ],
-                  },
-               },
-               sequenceNumber: "",
-               network: "LOCALHOST",
-            },
-         };
-
-         const config = {
-            region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
-            endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
-         };
-         const client = new LambdaClient(config);
-         const input: InvokeCommandInput = {
-            FunctionName: "EventProducerFunction",
-            Payload: JSON.stringify({
-               body: JSON.stringify(data),
-            }),
-         };
-         const command = new InvokeCommand(input);
-         client.send(command).then(console.log).catch(console.error);
-
-         console.log("UpdateDstOrder event emitted");
-         console.log("orderId: ", orderId);
-         console.log("maker: ", maker);
-         console.log("taker: ", taker);
-         console.log("depositAmount: ", depositAmount);
-         console.log("desiredAmount: ", desiredAmount);
-         console.log("timelock: ", timelock);
-         console.log("orderStatus: ", orderStatus);
-      },
-   );
+            const config = {
+               region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
+               endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
+            };
+            const client = new LambdaClient(config);
+            const input: InvokeCommandInput = {
+               FunctionName: "EventProducerFunction",
+               Payload: JSON.stringify({
+                  body: JSON.stringify(data),
+               }),
+            };
+            const command = new InvokeCommand(input);
+            client.send(command).then(console.log).catch(console.error);
+         });
+      }
+   }
 }

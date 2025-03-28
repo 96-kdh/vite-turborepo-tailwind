@@ -125,6 +125,28 @@ resource "aws_dynamodb_table" "Order" {
   }
 }
 
+/**
+Error
+  functionName (pk)
+  createdAtIndex
+  errorMsg
+ */
+resource "aws_dynamodb_table" "Order" {
+  name         = "Error"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "functionName"
+  range_key    = "createdAtIndex"
+
+  attribute {
+    name = "functionName"
+    type = "S"
+  }
+  attribute {
+    name = "createdAtIndex"
+    type = "S"
+  }
+}
+
 resource "aws_sqs_queue" "eventQueue" {
   name = "eventQueue.fifo"
   delay_seconds = 0 // default 0

@@ -81,15 +81,22 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
 
    for (const record of event.Records) {
       const message: SqsEventMessageBody = JSON.parse(record.body);
+
       const logIndexChainId = coder.encode(
          ["uint256", "uint256"],
          [BigInt(message.log.transaction.index), BigInt(message.chainId)],
       );
 
+      // const [invitee, amount, reward] = [
+      //    coder.decode(["address"], message.log.topics[1]),
+      //    coder.decode(["address"], message.log.topics[2]),
+      // ];
+      // const [invitee, amount, reward] = coder.decode(["address", "uint256", "uint256"], message.log.data);
+
       const archiveItem: ArchiveTableItem = {
          transactionHash: message.log.transaction.hash,
          logIndexChainId: logIndexChainId,
-         msgSender: "",
+         msgSender: message.log.transaction.from.address,
          eventSig: message.log.topics[0],
          timestamp: message.timestamp,
          chainId: message.chainId,
@@ -108,6 +115,7 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
    if (event.Records.length > 0) {
       // batchWrite limit 25
       const sliceBatchWriteCommandData = division(batchWriteCommandData, 25);
+
       for (const batchWriteData of sliceBatchWriteCommandData) {
          const batchWriteCommand = new BatchWriteCommand({
             RequestItems: {

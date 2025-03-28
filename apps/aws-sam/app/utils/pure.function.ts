@@ -1,3 +1,5 @@
+import moment from "moment-timezone";
+
 export const division = <T>(arr: T[], n: number): T[][] => {
    if (arr.length === 0) return [[]];
 
@@ -11,4 +13,9 @@ export const division = <T>(arr: T[], n: number): T[][] => {
    }
 
    return result;
+};
+
+export const now = () => {
+   const m = moment().tz("Asia/Seoul");
+   return m.unix();
 };

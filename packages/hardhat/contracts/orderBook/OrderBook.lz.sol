@@ -30,8 +30,12 @@ contract IOrderBook {
         OrderStatus status;
     }
 
-    event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, OrderStatus orderStatus);
-    event UpdateDstOrder(bytes32 indexed orderId, address indexed maker, address taker, uint256 depositAmount, uint256 desiredAmount, uint256 timelock, OrderStatus orderStatus);
+    event CreateSrcOrder(uint256 indexed orderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid);
+    event UpdateSrcOrder(uint256 indexed orderId, address indexed taker, uint256 timelock, OrderStatus orderStatus, uint32 dstEid);
+    event CloseSrcOrder(uint256 indexed orderId, OrderStatus orderStatus, uint32 dstEid);
+    event CreateDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, uint32 dstEid);
+    event UpdateDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, address indexed taker, uint256 timelock, OrderStatus orderStatus, uint32 dstEid);
+    event CloseDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, OrderStatus orderStatus, uint32 dstEid);
 }
 
 contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
@@ -92,7 +96,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         });
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
-        emit UpdateSrcOrder(orderId, msg.sender, address(0), _depositAmount, _desiredAmount, 0, OrderStatus.createOrder);
+        emit CreateSrcOrder(orderId, msg.sender, _depositAmount, _desiredAmount, _dstEid);
 
         orderId++;
     }
@@ -115,7 +119,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
 
-        emit UpdateSrcOrder(_orderId, msg.sender, address(0), order.depositAmount, order.desiredAmount, 0, OrderStatus.canceled);
+        emit CloseSrcOrder(_orderId, OrderStatus.canceled, _dstEid);
     }
 
     /**
@@ -152,12 +156,11 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         );
         MessagingFee memory fee = _quote(_dstEid, payload, _options, false);
         require(msg.value >= fee.nativeFee, "Insufficient funds fee");
-        uint256 lockedAmount = msg.value - fee.nativeFee;
-        require(_paymentAmount == lockedAmount, "dif _paymentAmount & lockedAmount");
+        require(_paymentAmount == msg.value - fee.nativeFee, "dif _paymentAmount & msg.value - fee.nativeFee");
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
 
-        emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.executeOrder);
+        emit UpdateDstOrder(_orderId, dstOrderId, order.taker, order.timelock, OrderStatus.executeOrder, _dstEid);
     }
 
     function claim(uint256 _orderId, uint32 _dstEid, bytes calldata _options) external payable {
@@ -177,7 +180,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
         _lzSend(_dstEid, payload, _options, fee, payable(msg.sender));
 
-        emit UpdateSrcOrder(_orderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.claim);
+        emit CloseSrcOrder(_orderId,  OrderStatus.claim, _dstEid);
     }
 
     function emergencyRefundDstOrder(uint256 _orderId, uint32 _dstEid) external onlyOwner {
@@ -194,7 +197,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
         payable(order.taker).transfer(order.desiredAmount);
         order.status = OrderStatus.canceledLzReceive;
 
-        emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.canceledLzReceive);
+        emit CloseDstOrder(_orderId, dstOrderId,  OrderStatus.canceledLzReceive, _dstEid);
     }
 
     function _lzReceive(
@@ -236,7 +239,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
                 timelock: 0,
                 status: OrderStatus.createOrderLzReceive
             });
-            emit UpdateDstOrder(dstOrderId, _maker, address(0), _depositAmount, _desiredAmount, 0, OrderStatus.createOrderLzReceive);
+            emit CreateDstOrder(_orderId, dstOrderId, _dstEid);
         } else if (messageType == bytes4(keccak256("executeOrder"))) {
             (uint256 _orderId, address _taker, uint32 _dstEid, , uint32 _srcEid, , uint256 _timelock)
             = abi.decode(_payload[4:], (uint256, address, uint32, uint256, uint32, uint256, uint256));
@@ -255,7 +258,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
 
             payable(_taker).transfer(order.depositAmount);
 
-            emit UpdateSrcOrder(_orderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.executeOrderLzReceive);
+            emit UpdateSrcOrder(_orderId, order.taker, order.timelock, OrderStatus.executeOrderLzReceive, _dstEid);
         } else if (messageType == bytes4(keccak256("claim"))) {
             (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
             require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
@@ -272,7 +275,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
             order.status = OrderStatus.claimLzReceive;
             payable(_maker).transfer(order.desiredAmount);
 
-            emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.claimLzReceive);
+            emit CloseDstOrder(_orderId, dstOrderId, OrderStatus.claimLzReceive, _dstEid);
         } else if (messageType == bytes4(keccak256("cancelOrder"))) {
             (uint256 _orderId, address _maker, uint32 _dstEid) = abi.decode(_payload[4:], (uint256, address, uint32));
             require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
@@ -290,7 +293,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
             }
             order.status = OrderStatus.canceledLzReceive;
 
-            emit UpdateDstOrder(dstOrderId, order.maker, order.taker, order.depositAmount, order.desiredAmount, order.timelock, OrderStatus.canceledLzReceive);
+            emit CloseDstOrder(_orderId, dstOrderId, OrderStatus.canceledLzReceive, _dstEid);
         } else {
             revert("Invalid message type");
         }

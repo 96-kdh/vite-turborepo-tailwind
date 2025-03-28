@@ -1,8 +1,3 @@
-export enum TableNames {
-   Archive = "Archive",
-   Order = "Order",
-}
-
 export interface ArchiveTableItem {
    transactionHash: string; // (partition key)
    logIndexChainId: string; // (sort key)
@@ -13,7 +8,7 @@ export interface ArchiveTableItem {
 
    chainId: number;
    contractAddress: string;
-   topics: string[];
+   topics: readonly string[];
    data: string;
 }
 
@@ -31,4 +26,10 @@ export interface OrderTableItem {
    timelock: number;
    updatedAt: number;
    transactionHashes: string[];
+}
+
+export interface ErrorTableItem {
+   functionName: string; // (partition key)
+   createdAtIndex: string; // (sort key), ex) '1743164108, 1' or '1743164108, 2'
+   errorMsg: string;
 }

@@ -38,6 +38,9 @@ importers:
       ethers:
         specifier: ^6.13.5
         version: 6.13.5
+      moment-timezone:
+        specifier: ^0.5.48
+        version: 0.5.48
     devDependencies:
       '@aws-sdk/client-lambda':
         specifier: ^3.774.0
@@ -9504,6 +9507,16 @@ packages:
       yargs-parser: 20.2.9
       yargs-unparser: 2.0.0
     dev: true
+
+  /moment-timezone@0.5.48:
+    resolution: {integrity: sha512-f22b8LV1gbTO2ms2j2z13MuPogNoh5UzxL3nzNAYKGraILnbGc9NEE6dyiiiLv46DGRb8A4kg8UKWLjPthxBHw==}
+    dependencies:
+      moment: 2.30.1
+    dev: false
+
+  /moment@2.30.1:
+    resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
+    dev: false
 
   /motion@10.16.2:
     resolution: {integrity: sha512-p+PurYqfUdcJZvtnmAqu5fJgV2kR0uLFQuBKtLeFVTrYEVllI99tiOTSefVNYuip9ELTEkepIIDftNdze76NAQ==}
