@@ -1,0 +1,10 @@
+{
+   "name": "localhost",
+   "version": "1.0.0",
+   "scripts": {
+      "dev": "npx hardhat-node node --port 8545"
+   },
+   "devDependencies": {
+      "@repo/hardhat": "workspace:*"
+   }
+}

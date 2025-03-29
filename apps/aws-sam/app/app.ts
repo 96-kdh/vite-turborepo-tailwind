@@ -1,15 +1,18 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, SQSEvent, SQSHandler } from "aws-lambda";
 import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
-import { PutCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
-import { AbiCoder } from "ethers";
+import { BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { AbiCoder, ZeroAddress } from "ethers";
 
 import {
    AlchemyWebhookPayload,
-   NetworkToChainId,
-   SqsEventMessageBody,
-   TableNames,
    ArchiveTableItem,
+   NetworkToChainId,
+   OrderStatus,
    OrderTableItem,
+   SqsEventMessageBody,
+   SupportedEvent,
+   SupportedEventSig,
+   TableNames,
 } from "@repo/hardhat/script";
 
 import { CustomResponse, division, docClient, sqsClient } from "./utils";
@@ -76,31 +79,56 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
 
    const updateTask = [];
    const batchWriteTask = [];
-
    const batchWriteCommandData = [];
 
    for (const record of event.Records) {
       const message: SqsEventMessageBody = JSON.parse(record.body);
+      const eventSig = message.log.topics[0];
 
-      const logIndexChainId = coder.encode(
-         ["uint256", "uint256"],
-         [BigInt(message.log.transaction.index), BigInt(message.chainId)],
-      );
+      if (eventSig === SupportedEventSig()[SupportedEvent.CreateSrcOrder]) {
+         const [orderId, maker] = [
+            String(coder.decode(["uint256"], message.log.topics[1])[0]),
+            coder.decode(["address"], message.log.topics[2])[0].toLowerCase(),
+         ];
+         const [depositAmount, desiredAmount, dstEid] = coder.decode(
+            ["uint256", "uint256", "uint32"],
+            message.log.data,
+         );
 
-      // const [invitee, amount, reward] = [
-      //    coder.decode(["address"], message.log.topics[1]),
-      //    coder.decode(["address"], message.log.topics[2]),
-      // ];
-      // const [invitee, amount, reward] = coder.decode(["address", "uint256", "uint256"], message.log.data);
+         const orderItem: OrderTableItem = {
+            orderId: orderId, // (partition key)
+            chainId: Number(message.chainId), // (sort key)
+            maker: maker, // (GSI, pk)
+            taker: ZeroAddress.toLowerCase(), // (GSI, pk)
+            orderStatus: OrderStatus.createOrder, // (GSI, pk)
+            createdAt: "", // (GSI, sort key)
+            depositAmount: String(depositAmount),
+            desiredAmount: String(desiredAmount),
+            timelock: 0,
+            updatedAt: "",
+         };
+      } else if (eventSig === SupportedEventSig()[SupportedEvent.UpdateSrcOrder]) {
+      } else if (eventSig === SupportedEventSig()[SupportedEvent.CloseSrcOrder]) {
+      } else if (eventSig === SupportedEventSig()[SupportedEvent.CreateDstOrder]) {
+      } else if (eventSig === SupportedEventSig()[SupportedEvent.UpdateDstOrder]) {
+      } else if (eventSig === SupportedEventSig()[SupportedEvent.CloseDstOrder]) {
+      } else {
+         // throw new Error("Unrecognized event sign");
+         console.error("Unrecognized event sign", ", eventSig: ", eventSig, "\n message: ", message);
+         continue;
+      }
 
       const archiveItem: ArchiveTableItem = {
-         transactionHash: message.log.transaction.hash,
-         logIndexChainId: logIndexChainId,
-         msgSender: message.log.transaction.from.address,
-         eventSig: message.log.topics[0],
-         timestamp: message.timestamp,
-         chainId: message.chainId,
-         contractAddress: message.log.account.address,
+         transactionHash: message.log.transaction.hash.toLowerCase(),
+         logIndexChainId: coder.encode(
+            ["uint256", "uint256"],
+            [BigInt(message.log.transaction.index), BigInt(message.chainId)],
+         ),
+         msgSender: message.log.transaction.from.address.toLowerCase(),
+         eventSig: eventSig.toLowerCase(),
+         timestamp: Number(message.timestamp),
+         chainId: Number(message.chainId),
+         contractAddress: message.log.account.address.toLowerCase(),
          topics: message.log.topics,
          data: message.log.data,
       };
@@ -110,6 +138,12 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
             Item: archiveItem,
          },
       });
+
+      // const [invitee, amount, reward] = [
+      //    coder.decode(["address"], message.log.topics[1]),
+      //    coder.decode(["address"], message.log.topics[2]),
+      // ];
+      // const [invitee, amount, reward] = coder.decode(["address", "uint256", "uint256"], message.log.data);
    }
 
    if (event.Records.length > 0) {

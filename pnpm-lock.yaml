@@ -76,6 +76,18 @@ importers:
         specifier: ^10.9.1
         version: 10.9.2(@types/node@20.17.28)(typescript@5.5.4)
 
+  apps/hardhat-node/localhost:
+    devDependencies:
+      '@repo/hardhat':
+        specifier: workspace:*
+        version: link:../../../packages/hardhat
+
+  apps/hardhat-node/localhost-copy:
+    devDependencies:
+      '@repo/hardhat':
+        specifier: workspace:*
+        version: link:../../../packages/hardhat
+
   apps/web:
     dependencies:
       '@reown/appkit':

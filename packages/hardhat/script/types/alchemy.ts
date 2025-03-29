@@ -1,5 +1,5 @@
 import { SupportChainIds } from "../constants";
-import { SupportNetwork } from "./network";
+import { SupportNetworks } from "./network";
 
 export interface AlchemyWebhookPayload {
    webhookId: string; // "wh_wclh9c0e3nf3t4wn",
@@ -14,7 +14,7 @@ export interface AlchemyWebhookPayloadEvent {
       block: AlchemyWebhookPayloadEventBlockData;
    };
    sequenceNumber: string;
-   network: SupportNetwork;
+   network: SupportNetworks;
 }
 
 export interface SqsEventMessageBody {

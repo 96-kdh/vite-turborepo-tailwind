@@ -69,7 +69,6 @@ Order
 	desiredAmount
 	timelock
 	updatedAt
-	transactionHashes, (map type, ex: ["0x52..", "0x53.."])
  */
 resource "aws_dynamodb_table" "Order" {
   name         = "Order"
@@ -95,7 +94,7 @@ resource "aws_dynamodb_table" "Order" {
   }
   attribute {
     name = "orderStatus"
-    type = "S"
+    type = "N"
   }
   attribute {
     name = "createdAt"
@@ -128,8 +127,9 @@ resource "aws_dynamodb_table" "Order" {
 /**
 Error
   functionName (pk)
-  createdAtIndex
+  createdAtIndex (sort key)
   errorMsg
+  task
  */
 resource "aws_dynamodb_table" "Order" {
   name         = "Error"

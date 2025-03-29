@@ -22,20 +22,20 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
       const [ownerA, endpointOwner, otherAccount] = await hre.viem.getWalletClients();
 
       // Deploy LayerZero Mock Endpoint contracts on Chain A and Chain B.
-      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2Mock", [eidA], {
+      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2Mock" as string, [eidA], {
          client: { wallet: endpointOwner },
       });
-      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2Mock", [eidB], {
+      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2Mock" as string, [eidB], {
          client: { wallet: endpointOwner },
       });
 
       const orderBookA = await hre.viem.deployContract(
-         "OrderBookWithLz",
+         "OrderBookWithLz" as string,
          [mockEndpointV2A.address, ownerA.account.address, eidA],
          { client: { wallet: ownerA } },
       );
       const orderBookB = await hre.viem.deployContract(
-         "OrderBookWithLz",
+         "OrderBookWithLz" as string,
          [mockEndpointV2B.address, ownerA.account.address, eidB],
          { client: { wallet: ownerA } },
       );

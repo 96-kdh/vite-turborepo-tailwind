@@ -4,7 +4,7 @@ import hre from "hardhat";
 import { padHex } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 
-describe("MyOApp Test", function () {
+describe("EndpointV2MockPassiveReceivePayload Test", function () {
    // Mock LayerZero Endpoint IDs
    const eidA = 1;
    const eidB = 2;
@@ -14,22 +14,30 @@ describe("MyOApp Test", function () {
       const [ownerA, ownerB, endpointOwner] = await hre.viem.getWalletClients();
 
       // Deploy LayerZero mock endpoint contracts
-      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload", [eidA], {
+      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload" as string, [eidA], {
          client: { wallet: endpointOwner },
       });
 
-      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload", [eidB], {
+      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload" as string, [eidB], {
          client: { wallet: endpointOwner },
       });
 
       // Deploy MyOApp contracts linked to respective LayerZero endpoints
-      const myOAppA = await hre.viem.deployContract("MyOApp", [mockEndpointV2A.address, ownerA.account.address], {
-         client: { wallet: ownerA },
-      });
+      const myOAppA = await hre.viem.deployContract(
+         "MyOApp" as string,
+         [mockEndpointV2A.address, ownerA.account.address],
+         {
+            client: { wallet: ownerA },
+         },
+      );
 
-      const myOAppB = await hre.viem.deployContract("MyOApp", [mockEndpointV2B.address, ownerB.account.address], {
-         client: { wallet: ownerB },
-      });
+      const myOAppB = await hre.viem.deployContract(
+         "MyOApp" as string,
+         [mockEndpointV2B.address, ownerB.account.address],
+         {
+            client: { wallet: ownerB },
+         },
+      );
 
       // Set up destination LayerZero endpoints for each contract
       await mockEndpointV2A.write.setDestLzEndpoint([myOAppB.address, mockEndpointV2B.address]);

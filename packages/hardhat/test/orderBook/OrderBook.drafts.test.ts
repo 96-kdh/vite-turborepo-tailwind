@@ -14,17 +14,17 @@ describe("CrossChainOrderBook Test", function () {
       const [ownerA, endpointOwner, otherAccount] = await hre.viem.getWalletClients();
 
       // ✅ LayerZero Mock Endpoint 배포 (A 체인, B 체인)
-      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2Mock", [eidA], {
+      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2Mock" as string, [eidA], {
          client: { wallet: endpointOwner },
       });
 
-      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2Mock", [eidB], {
+      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2Mock" as string, [eidB], {
          client: { wallet: endpointOwner },
       });
 
       // ✅ CrossChainOrderBook 배포 (Ethereum, BNB)
       const orderBookA = await hre.viem.deployContract(
-         "MyOAppOrderBook",
+         "MyOAppOrderBook" as string,
          [mockEndpointV2A.address, ownerA.account.address, eidA],
          {
             client: { wallet: ownerA },
@@ -32,7 +32,7 @@ describe("CrossChainOrderBook Test", function () {
       );
 
       const orderBookB = await hre.viem.deployContract(
-         "MyOAppOrderBook",
+         "MyOAppOrderBook" as string,
          [mockEndpointV2B.address, ownerA.account.address, eidB],
          {
             client: { wallet: ownerA },

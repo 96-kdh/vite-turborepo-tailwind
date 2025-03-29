@@ -6,6 +6,7 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 
 import "./script/task";
+import { JsonRPC, SupportChainIds } from "./script";
 
 const CompilerSettings = {
    optimizer: {
@@ -29,8 +30,12 @@ const config: HardhatUserConfig = {
    },
    networks: {
       localhost: {
-         url: "http://127.0.0.1:8545",
-         chainId: 31337,
+         url: JsonRPC[SupportChainIds.LOCALHOST],
+         chainId: SupportChainIds.LOCALHOST,
+      },
+      localhost_copy: {
+         url: JsonRPC[SupportChainIds.LOCALHOST_COPY],
+         chainId: SupportChainIds.LOCALHOST_COPY,
       },
    },
    mocha: {

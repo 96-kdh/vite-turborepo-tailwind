@@ -1,3 +1,3 @@
 import { Network } from "alchemy-sdk";
 
-export type SupportNetwork = Network | "LOCALHOST";
+export type SupportNetworks = Network | "LOCALHOST" | "LOCALHOST_COPY";

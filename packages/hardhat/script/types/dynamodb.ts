@@ -18,18 +18,30 @@ export interface OrderTableItem {
 
    maker: string; // (GSI, pk)
    taker: string; // (GSI, pk)
-   orderStatus: string; // (GSI, pk)
+   orderStatus: OrderStatus; // (GSI, pk)
    createdAt: number; // (GSI, sort key)
 
    depositAmount: string;
    desiredAmount: string;
    timelock: number;
    updatedAt: number;
-   transactionHashes: string[];
 }
 
 export interface ErrorTableItem {
    functionName: string; // (partition key)
    createdAtIndex: string; // (sort key), ex) '1743164108, 1' or '1743164108, 2'
    errorMsg: string;
+   task: string;
+}
+
+export enum OrderStatus {
+   no = 0,
+   createOrder = 1,
+   createOrderLzReceive = 2,
+   executeOrder = 3,
+   executeOrderLzReceive = 4,
+   claim = 5,
+   claimLzReceive = 6,
+   canceled = 7,
+   canceledLzReceive = 8,
 }
