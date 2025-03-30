@@ -4,9 +4,10 @@ import hre from "hardhat";
 import { padHex, parseEther, keccak256, encodeAbiParameters, toHex, zeroAddress } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 import {
+   IOrderBook,
    MessagingFeeStructOutput,
-   OrderStructOutput,
 } from "../../typechain-types/contracts/orderBook/OrderBook.lz.sol/OrderBookWithLz";
+import OrderStructOutput = IOrderBook.OrderStructOutput;
 
 // -------------------------------------------------------------------
 // Test Flows
@@ -65,20 +66,63 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
       const [ownerA, endpointOwner, otherAccount] = await hre.viem.getWalletClients();
 
       // Deploy LayerZero Mock Endpoint contracts on Chain A and Chain B.
-      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload", [eidA], {
+      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload" as string, [eidA], {
          client: { wallet: endpointOwner },
       });
-      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload", [eidB], {
+      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2MockPassiveReceivePayload" as string, [eidB], {
          client: { wallet: endpointOwner },
       });
 
       const orderBookA = await hre.viem.deployContract(
-         "OrderBookWithLz",
+         "OrderBookWithLz" as string,
          [mockEndpointV2A.address, ownerA.account.address, eidA],
          { client: { wallet: ownerA } },
       );
       const orderBookB = await hre.viem.deployContract(
-         "OrderBookWithLz",
+         "OrderBookWithLz" as string,
+         [mockEndpointV2B.address, ownerA.account.address, eidB],
+         { client: { wallet: ownerA } },
+      );
+
+      // Set LayerZero Endpoint connections.
+      await mockEndpointV2A.write.setDestLzEndpoint([orderBookB.address, mockEndpointV2B.address]);
+      await mockEndpointV2B.write.setDestLzEndpoint([orderBookA.address, mockEndpointV2A.address]);
+
+      // Set peer connections.
+      await orderBookA.write.setPeer([eidB, padHex(orderBookB.address, { size: 32 })]);
+      await orderBookB.write.setPeer([eidA, padHex(orderBookA.address, { size: 32 })]);
+
+      const publicClient = await hre.viem.getPublicClient();
+
+      return {
+         orderBookA,
+         orderBookB,
+         ownerA,
+         mockEndpointV2A,
+         mockEndpointV2B,
+         publicClient,
+         otherAccount,
+      };
+   }
+   async function deployFixtureCustomReceivePayload() {
+      // Get wallet clients (signers)
+      const [ownerA, endpointOwner, otherAccount] = await hre.viem.getWalletClients();
+
+      // Deploy LayerZero Mock Endpoint contracts on Chain A and Chain B.
+      const mockEndpointV2A = await hre.viem.deployContract("EndpointV2MockCustom" as string, [eidA], {
+         client: { wallet: endpointOwner },
+      });
+      const mockEndpointV2B = await hre.viem.deployContract("EndpointV2MockCustom" as string, [eidB], {
+         client: { wallet: endpointOwner },
+      });
+
+      const orderBookA = await hre.viem.deployContract(
+         "OrderBookWithLz" as string,
+         [mockEndpointV2A.address, ownerA.account.address, eidA],
+         { client: { wallet: ownerA } },
+      );
+      const orderBookB = await hre.viem.deployContract(
+         "OrderBookWithLz" as string,
          [mockEndpointV2B.address, ownerA.account.address, eidB],
          { client: { wallet: ownerA } },
       );
@@ -334,7 +378,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
    // -------------------------------------------------------------------
    // Flow 4: createOrder -> delayed executeOrder -> emergencyRefundDstOrder
    // -------------------------------------------------------------------
-   describe("Flow 4: createOrder -> delayed executeOrder -> emergencyRefundDstOrder", function () {
+   describe("Flow 4: createOrder -> delayed executeOrder -> emergencyRefundDstOrder, with deployFixturePassiveReceivePayload", function () {
       it("should allow emergency refund when execution is delayed and timelock expired", async function () {
          const { orderBookA, orderBookB, ownerA, mockEndpointV2A } = await loadFixture(
             deployFixturePassiveReceivePayload,
@@ -397,6 +441,61 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
 
          const dstOrderAfterRefund = (await orderBookB.read.getOrder([0n, eidA])) as OrderStructOutput;
          expect(dstOrderAfterRefund.status).to.equal(8); // canceledLzReceive
+      });
+   });
+
+   describe("Flow 5: createOrder -> delayed executeOrder -> executeOrder, with deployFixtureCustomReceivePayload", function () {
+      it("should allow emergency refund when execution is delayed and timelock expired", async function () {
+         const { orderBookA, orderBookB, ownerA, mockEndpointV2A, mockEndpointV2B } = await loadFixture(
+            deployFixtureCustomReceivePayload,
+         );
+         const depositAmount = parseEther("1");
+         const desiredAmount = parseEther("2");
+         const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
+
+         const createPayload = CreateOrder({
+            orderId: 0n,
+            sender: ownerA.account.address,
+            srcEid: eidA,
+            depositAmount,
+            dstEid: eidB,
+            desiredAmount,
+         });
+         const feeRes = (await orderBookA.read.quote([
+            eidB,
+            createPayload,
+            options,
+            false,
+         ])) as MessagingFeeStructOutput;
+         const fee = feeRes.nativeFee;
+         await orderBookA.write.createOrder([eidB, depositAmount, desiredAmount, options], {
+            value: depositAmount + fee,
+         });
+
+         // Assume propagation to Chain B occurs.
+         let dstOrder0 = (await orderBookB.read.getOrder([0n, eidA])) as OrderStructOutput;
+         expect(dstOrder0.status).to.equal(0); // not receive
+
+         const { origin, endpoint, receiver, payloadHash, message, gas, msgValue, guid } =
+            (await mockEndpointV2A.read.lastQueueMessage([])) as {
+               origin: {
+                  srcEid: number;
+                  sender: string;
+                  nonce: bigint;
+               };
+               endpoint: string;
+               receiver: string;
+               payloadHash: string;
+               message: string;
+               gas: bigint;
+               msgValue: bigint;
+               guid: string;
+            };
+
+         await mockEndpointV2B.write.receivePayload([origin, receiver, payloadHash, message, gas, msgValue, guid]);
+         // Assume propagation to Chain B occurs.
+         dstOrder0 = (await orderBookB.read.getOrder([0n, eidA])) as OrderStructOutput;
+         expect(dstOrder0.status).to.equal(2); // createOrderLzReceive
       });
    });
 });

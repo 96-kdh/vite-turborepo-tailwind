@@ -1,23 +1,30 @@
 import { task } from "hardhat/config";
-import { isAddress, parseEther } from "viem";
+import { isAddress, padHex, parseEther } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 
 import { beforeTaskAction, encodePayloadViem } from "./utils";
-import { EndpointIds, SupportChainIds } from "../constants";
+import { contractAddresses, EndpointIds, SupportChainIds } from "../constants";
 import { Task } from "./types";
 
-// npx hardhat createOrder --network localhost --ca 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+// npx hardhat createOrder --network localhost --ca 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
 task(Task.createOrder, "createOrder")
-   .addOptionalParam("ca", "contract address", "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9")
+   .addOptionalParam("ca", "contract address", "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512")
    .addOptionalParam("depositAmount", "depositAmount", parseEther("1").toString())
    .addOptionalParam("desiredAmount", "desiredAmount", parseEther("2").toString())
-   .setAction(async ({ ca, depositAmount, desiredAmount }, hre) =>
-      beforeTaskAction({ ca, depositAmount, desiredAmount }, hre, async () => {
+   .addParam("dstchainid", "dst chainId")
+   .setAction(async ({ ca, depositAmount, desiredAmount, dstchainid }, hre) =>
+      beforeTaskAction({ ca, depositAmount, desiredAmount, dstchainid }, hre, async () => {
          if (!isAddress(ca)) throw new Error("not address --ca");
+
+         const chainId = hre.network.config.chainId as SupportChainIds;
+         if (!(Number(chainId) in SupportChainIds)) throw new Error("not support chainId");
+         if (!(Number(dstchainid) in SupportChainIds)) throw new Error("not support chainId");
+
+         const srcEid = EndpointIds[chainId];
+         const dstEid = EndpointIds[dstchainid as SupportChainIds];
+
          const [owner] = await hre.viem.getWalletClients();
-
          const OrderBookWithLz = await hre.viem.getContractAt("OrderBookWithLz" as string, ca);
-
          const { CreateOrder } = encodePayloadViem();
 
          // LayerZero 실행 옵션
@@ -25,51 +32,47 @@ task(Task.createOrder, "createOrder")
          const createPayload = CreateOrder({
             orderId: 0n,
             sender: owner.account.address,
-            srcEid: EndpointIds[SupportChainIds.LOCALHOST],
-            depositAmount,
-            dstEid: EndpointIds[SupportChainIds.LOCALHOST_COPY],
-            desiredAmount,
+            srcEid,
+            depositAmount: BigInt(depositAmount),
+            dstEid,
+            desiredAmount: BigInt(desiredAmount),
          });
 
          // 크로스체인 수수료 견적
-         const { nativeFee } = (await OrderBookWithLz.read.quote([
-            EndpointIds[SupportChainIds.LOCALHOST_COPY],
-            createPayload,
-            options,
-            false,
-         ])) as {
+         const { nativeFee } = (await OrderBookWithLz.read.quote([dstEid, createPayload, options, false])) as {
             nativeFee: bigint;
             lzTokenFee: bigint;
          };
 
          console.log("nativeFee: ", nativeFee);
 
-         const createPayload222 = CreateOrder({
-            orderId: 100000000000n,
-            sender: owner.account.address,
-            srcEid: EndpointIds[SupportChainIds.LOCALHOST],
-            depositAmount,
-            dstEid: EndpointIds[SupportChainIds.LOCALHOST_COPY],
-            desiredAmount,
+         await OrderBookWithLz.write.createOrder([dstEid, BigInt(depositAmount), desiredAmount, options], {
+            value: BigInt(depositAmount) + nativeFee,
          });
+      }),
+   );
 
-         // 크로스체인 수수료 견적
-         const { nativeFee: nativeFee22 } = (await OrderBookWithLz.read.quote([
-            EndpointIds[SupportChainIds.LOCALHOST_COPY],
-            createPayload222,
-            options,
-            false,
-         ])) as {
-            nativeFee: bigint;
-            lzTokenFee: bigint;
-         };
-         console.log("nativeFee22: ", nativeFee22);
+// npx hardhat setPeer --network localhost --ca 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 --dstchainid 31338
+task(Task.setPeer, "setPeer")
+   .addParam("ca", "contract address")
+   .addParam("dstchainid", "dst chainId")
+   .addOptionalParam("autoapprove", "-auto-approve", "false")
+   .setAction(async ({ ca, dstchainid, autoapprove }, hre) =>
+      beforeTaskAction({ ca, dstchainid, autoapprove }, hre, async () => {
+         const chainId = hre.network.config.chainId;
+         if (chainId !== SupportChainIds.LOCALHOST && chainId !== SupportChainIds.LOCALHOST_COPY) {
+            throw new Error("only run local");
+         }
+         if (!isAddress(ca)) throw new Error("not address --ca");
+         if (!(Number(chainId) in SupportChainIds)) throw new Error("not support chainId");
+         if (!(Number(dstchainid) in SupportChainIds)) throw new Error("not support chainId");
 
-         await OrderBookWithLz.write.createOrder(
-            [EndpointIds[SupportChainIds.LOCALHOST_COPY], depositAmount, desiredAmount, options],
-            {
-               value: depositAmount + nativeFee,
-            },
-         );
+         const OrderBookWithLz = await hre.viem.getContractAt("OrderBookWithLz" as string, ca);
+         await OrderBookWithLz.write.setPeer([
+            EndpointIds[Number(dstchainid) as SupportChainIds],
+            padHex(contractAddresses[Number(dstchainid) as SupportChainIds].OrderBookWithLz, { size: 32 }),
+         ]);
+
+         console.log("complete OrderBookWithLz setPeer");
       }),
    );

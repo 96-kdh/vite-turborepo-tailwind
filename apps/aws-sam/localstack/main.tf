@@ -131,7 +131,7 @@ Error
   errorMsg
   task
  */
-resource "aws_dynamodb_table" "Order" {
+resource "aws_dynamodb_table" "Error" {
   name         = "Error"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "functionName"

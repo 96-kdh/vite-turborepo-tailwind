@@ -1,6 +1,8 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { EndpointIds, SupportChainIds } from "../../../../script";
 import hre from "hardhat";
+
+import { EndpointIds, SupportChainIds } from "../../../../script";
+import "../../index";
 
 const LayerZeroModule = buildModule("LayerZeroModule", function (m) {
    const chainId = hre.network.config.chainId as SupportChainIds;
@@ -9,7 +11,9 @@ const LayerZeroModule = buildModule("LayerZeroModule", function (m) {
       throw new Error("require localhost network");
    }
 
-   const MockEndpointV2 = m.contract("EndpointV2MockCustom", [EndpointIds[chainId]]);
+   const MockEndpointV2 = m.contract("EndpointV2MockCustom", [EndpointIds[chainId]], {
+      id: `MockEndpointV2_${chainId}`,
+   });
 
    return { MockEndpointV2 };
 });
