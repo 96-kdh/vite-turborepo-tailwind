@@ -10,6 +10,7 @@
    },
    "devDependencies": {
       "@aws-sdk/client-lambda": "^3.774.0",
+      "@aws-sdk/client-sqs": "^3.758.0",
       "@layerzerolabs/lz-evm-messagelib-v2": "^3.0.74",
       "@layerzerolabs/lz-evm-protocol-v2": "^3.0.74",
       "@layerzerolabs/lz-v2-utilities": "^3.0.74",

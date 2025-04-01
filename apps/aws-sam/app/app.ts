@@ -13,7 +13,7 @@ import {
    SupportedEvent,
    SupportedEventSig,
    TableNames,
-} from "@repo/hardhat/script";
+} from "./vendor/@repo/hardhat/script";
 
 import { CustomResponse, division, docClient, sqsClient } from "./utils";
 
@@ -28,7 +28,12 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
       const batchEntries = [];
       let batchId = 0;
 
+      const supportedEventSigs = Object.values(SupportedEventSig()).map((v) => v.toLowerCase());
+
       for (const log of eventBody.event.data.block.logs) {
+         const isSupported = supportedEventSigs.includes((log.topics[0] as string).toLowerCase());
+         if (!isSupported) continue;
+
          const chainId = NetworkToChainId[eventBody.event.network] || 0; // Unknown chainId is zero
          const messageId = coder.encode(
             ["uint256", "uint256", "bytes32", "uint256"],
@@ -52,19 +57,20 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
          batchId++;
       }
       console.log("batchMsg length is ", batchId);
+      if (batchEntries.length > 0) {
+         // batch message limit 10
+         const divisionEntries = division(batchEntries, 10);
+         for (const entries of divisionEntries) {
+            const params = {
+               QueueUrl: "http://host.docker.internal:4566/000000000000/eventQueue.fifo",
+               Entries: entries,
+            };
+            const command = new SendMessageBatchCommand(params);
+            promiseTask.push(new Promise((resolve) => resolve(sqsClient.send(command))));
+         }
 
-      // batch message limit 10
-      const divisionEntries = division(batchEntries, 10);
-      for (const entries of divisionEntries) {
-         const params = {
-            QueueUrl: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/eventQueue.fifo",
-            Entries: entries,
-         };
-         const command = new SendMessageBatchCommand(params);
-         promiseTask.push(new Promise((resolve) => resolve(sqsClient.send(command))));
+         await Promise.all(promiseTask);
       }
-
-      await Promise.all(promiseTask);
 
       return CustomResponse.Created();
    } catch (err) {
@@ -77,15 +83,18 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
 export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> => {
    const coder = AbiCoder.defaultAbiCoder();
 
-   const updateTask = [];
+   const archiveTableBatchWriteCommandData = [];
+   const orderTableBatchWriteCommandData = [];
+
    const batchWriteTask = [];
-   const batchWriteCommandData = [];
+   const orderTableUpdateTask = [];
 
    for (const record of event.Records) {
       const message: SqsEventMessageBody = JSON.parse(record.body);
       const eventSig = message.log.topics[0];
 
       if (eventSig === SupportedEventSig()[SupportedEvent.CreateSrcOrder]) {
+         // CreateSrcOrder = "CreateSrcOrder(uint256 indexed orderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid)",
          const [orderId, maker] = [
             String(coder.decode(["uint256"], message.log.topics[1])[0]),
             coder.decode(["address"], message.log.topics[2])[0].toLowerCase(),
@@ -101,19 +110,43 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
             maker: maker, // (GSI, pk)
             taker: ZeroAddress.toLowerCase(), // (GSI, pk)
             orderStatus: OrderStatus.createOrder, // (GSI, pk)
-            createdAt: "", // (GSI, sort key)
+            createdAt: message.timestamp, // (GSI, sort key)
             depositAmount: String(depositAmount),
             desiredAmount: String(desiredAmount),
             timelock: 0,
-            updatedAt: "",
+            updatedAt: message.timestamp,
          };
+
+         orderTableBatchWriteCommandData.push({
+            PutRequest: {
+               Item: orderItem,
+            },
+         });
       } else if (eventSig === SupportedEventSig()[SupportedEvent.UpdateSrcOrder]) {
       } else if (eventSig === SupportedEventSig()[SupportedEvent.CloseSrcOrder]) {
       } else if (eventSig === SupportedEventSig()[SupportedEvent.CreateDstOrder]) {
+         // CreateDstOrder = "CreateDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, uint32 dstEid)",
+         const [srcOrderId, dstOrderId] = [
+            String(coder.decode(["uint256"], message.log.topics[1])[0]),
+            String(coder.decode(["bytes32"], message.log.topics[1])[0]),
+         ];
+         const [dstEid] = coder.decode(["uint32"], message.log.data);
+
+         const orderItem: OrderTableItem = {
+            orderId: orderId, // (partition key)
+            chainId: Number(message.chainId), // (sort key)
+            maker: maker, // (GSI, pk)
+            taker: ZeroAddress.toLowerCase(), // (GSI, pk)
+            orderStatus: OrderStatus.createOrder, // (GSI, pk)
+            createdAt: message.timestamp, // (GSI, sort key)
+            depositAmount: String(depositAmount),
+            desiredAmount: String(desiredAmount),
+            timelock: 0,
+            updatedAt: message.timestamp,
+         };
       } else if (eventSig === SupportedEventSig()[SupportedEvent.UpdateDstOrder]) {
       } else if (eventSig === SupportedEventSig()[SupportedEvent.CloseDstOrder]) {
       } else {
-         // throw new Error("Unrecognized event sign");
          console.error("Unrecognized event sign", ", eventSig: ", eventSig, "\n message: ", message);
          continue;
       }
@@ -133,22 +166,28 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
          data: message.log.data,
       };
 
-      batchWriteCommandData.push({
+      archiveTableBatchWriteCommandData.push({
          PutRequest: {
             Item: archiveItem,
          },
       });
-
-      // const [invitee, amount, reward] = [
-      //    coder.decode(["address"], message.log.topics[1]),
-      //    coder.decode(["address"], message.log.topics[2]),
-      // ];
-      // const [invitee, amount, reward] = coder.decode(["address", "uint256", "uint256"], message.log.data);
    }
 
-   if (event.Records.length > 0) {
+   if (archiveTableBatchWriteCommandData.length + orderTableBatchWriteCommandData.length <= 25) {
+      const batchWriteCommand = new BatchWriteCommand({
+         RequestItems: {
+            [TableNames.Archive]: archiveTableBatchWriteCommandData,
+            [TableNames.Order]: orderTableBatchWriteCommandData,
+         },
+      });
+
+      batchWriteTask.push(new Promise((resolve) => resolve(docClient.send(batchWriteCommand))));
+   } else {
       // batchWrite limit 25
-      const sliceBatchWriteCommandData = division(batchWriteCommandData, 25);
+      const sliceBatchWriteCommandData = division(
+         [...archiveTableBatchWriteCommandData, ...orderTableBatchWriteCommandData],
+         25,
+      );
 
       for (const batchWriteData of sliceBatchWriteCommandData) {
          const batchWriteCommand = new BatchWriteCommand({

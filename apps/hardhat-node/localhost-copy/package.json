@@ -1,5 +1,5 @@
 {
-   "name": "localhost-copy",
+   "name": "hardhat-node-localhost-copy",
    "version": "1.0.0",
    "scripts": {
       "dev": "npx hardhat-node node --port 8546"

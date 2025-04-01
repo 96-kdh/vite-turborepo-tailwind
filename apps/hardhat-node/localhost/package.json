@@ -1,5 +1,5 @@
 {
-   "name": "localhost",
+   "name": "hardhat-node-localhost",
    "version": "1.0.0",
    "scripts": {
       "dev": "npx hardhat-node node --port 8545"

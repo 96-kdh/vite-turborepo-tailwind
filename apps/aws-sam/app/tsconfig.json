@@ -1,12 +1,20 @@
 {
-   "extends": "@repo/typescript-config/base.json",
    "compilerOptions": {
       "target": "es2020",
-      "module": "commonjs",
       "strict": true,
+      "preserveConstEnums": true,
+      "noEmit": true,
+      "sourceMap": false,
+      "module": "es2015",
+      "moduleResolution": "node",
       "esModuleInterop": true,
       "skipLibCheck": true,
-      "outDir": "dist"
+      "forceConsistentCasingInFileNames": true
    },
-   "include": ["app.ts"]
+   "exclude": ["node_modules", "**/*.test.ts"],
+   "ts-node": {
+      "compilerOptions": {
+         "module": "commonjs"
+      }
+   }
 }

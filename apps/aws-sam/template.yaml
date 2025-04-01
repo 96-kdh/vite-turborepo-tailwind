@@ -85,8 +85,6 @@ Resources:
         Sourcemap: true
         EntryPoints:
         - app.ts
-        External:
-          - "@repo/hardhat"
   EventConsumerFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -114,5 +112,3 @@ Resources:
         Target: "es2020"
         EntryPoints:
           - app.ts
-        External:
-          - "@repo/hardhat"

@@ -1,18 +1,20 @@
 {
-   "name": "sam",
+   "name": "aws-sam",
    "version": "1.0.0",
    "license": "MIT",
    "scripts": {
-      "dev": "cd .. && sam local start-lambda --env-vars env.local.json",
-      "unit": "jest",
-      "lint": "eslint '*.ts' --quiet --fix",
-      "compile": "tsc",
+      "dev": "npm run install:vendor && npm run run:lambda",
+      "install:vendor": "mkdir -p ./vendor/@repo/hardhat/script && cp -R ../../../packages/hardhat/script/* ./vendor/@repo/hardhat/script",
+      "run:lambda": "cd .. && sam local start-lambda --env-vars env.local.json && cd app",
       "test": "npm run compile && npm run unit"
    },
    "dependencies": {
       "@aws-sdk/client-dynamodb": "^3.767.0",
       "@aws-sdk/client-sqs": "^3.758.0",
       "@aws-sdk/lib-dynamodb": "^3.767.0",
+      "@repo/eslint-config": "file:../../../packages/eslint-config",
+      "@repo/hardhat": "file:../../../packages/hardhat",
+      "@repo/typescript-config": "file:../../../packages/typescript-config",
       "alchemy-sdk": "^3.5.6",
       "esbuild": "^0.14.54",
       "ethers": "^6.13.5",
@@ -21,9 +23,6 @@
    "devDependencies": {
       "@aws-sdk/client-lambda": "^3.774.0",
       "@jest/globals": "^29.2.0",
-      "@repo/eslint-config": "file:../../../packages/eslint-config",
-      "@repo/hardhat": "file:../../../packages/hardhat",
-      "@repo/typescript-config": "file:../../../packages/typescript-config",
       "@types/aws-lambda": "^8.10.92",
       "@types/jest": "^29.2.0",
       "@types/node": "^20.5.7",
