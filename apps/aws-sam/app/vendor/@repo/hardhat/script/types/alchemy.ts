@@ -31,7 +31,7 @@ export interface AlchemyWebhookPayloadEventBlockData {
    logs: AlchemyWebhookPayloadEventLogData[];
 }
 
-interface AlchemyWebhookPayloadEventLogData {
+export interface AlchemyWebhookPayloadEventLogData {
    data: string;
    topics: readonly string[];
    index: number;

@@ -37,8 +37,8 @@ Resources:
         AddDefaultAuthorizerToCorsPreflight: false
         AddApiKeyRequiredToCorsPreflight: false # api key 추가하고 해당 속성 때문에 하루종일 날렸음 (포스트맨에서는 정상, web 브라우저에서는 Preflight 때문에 헤더에 key 가 빠져있는 상태때문에 cors, 403 error 처럼 리턴)
         ApiKeyRequired: true # 각 연결된 람다에서 require key 속성을 false 로 변경해야함
-      CacheClusterEnabled: true
-      CacheClusterSize: "0.5"
+      # CacheClusterEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
+      # CacheClusterSize: "0.5" # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
   ApiKey:
     Type: AWS::ApiGateway::ApiKey
     Properties:
@@ -85,30 +85,30 @@ Resources:
         Sourcemap: true
         EntryPoints:
         - app.ts
-  EventConsumerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: app/
-      Handler: app.eventConsumer
-      Runtime: nodejs18.x
-      Architectures:
-        - x86_64
-      Timeout: 30
-      MemorySize: 1024
-      Events:
-        SQSQueueEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt EventQueue.Arn
-            BatchSize: 20
-            Enabled: true
-      Policies:
-        - SQSPollerPolicy:
-            QueueName: EventQueue.fifo
-    Metadata: # Manage esbuild properties
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: "es2020"
-        EntryPoints:
-          - app.ts
+#  EventConsumerFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      CodeUri: app/
+#      Handler: app.eventConsumer
+#      Runtime: nodejs18.x
+#      Architectures:
+#        - x86_64
+#      Timeout: 30
+#      MemorySize: 1024
+#      Events:
+#        SQSQueueEvent:
+#          Type: SQS
+#          Properties:
+#            Queue: !GetAtt EventQueue.Arn
+#            BatchSize: 10
+#            Enabled: true
+#      Policies:
+#        - SQSPollerPolicy:
+#            QueueName: EventQueue.fifo
+#    Metadata: # Manage esbuild properties
+#      BuildMethod: esbuild
+#      BuildProperties:
+#        Minify: true
+#        Target: "es2020"
+#        EntryPoints:
+#          - app.ts

@@ -371,7 +371,7 @@ export async function sendEventToLocalhost(
    const client = new LambdaClient(config);
    const promiseTask = [];
 
-   const supportedEventSigs = Object.values(SupportedEventSig()).map((v) => v.toLowerCase());
+   const supportedEventSigs = Object.values(SupportedEventSig());
    for (const log of receipt.logs) {
       const isSupported = supportedEventSigs.includes((log.topics[0] as string).toLowerCase());
       if (!isSupported) continue;

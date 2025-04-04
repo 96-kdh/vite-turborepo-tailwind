@@ -2,12 +2,10 @@ import { id } from "ethers";
 
 export enum SupportedEvent {
    CreateSrcOrder = "CreateSrcOrder(uint256 indexed orderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid)",
-   UpdateSrcOrder = "UpdateSrcOrder(uint256 indexed orderId, address indexed taker, uint256 timelock, uint8 orderStatus, uint32 dstEid)",
-   CloseSrcOrder = "CloseSrcOrder(uint256 indexed orderId, uint8 orderStatus, uint32 dstEid)",
+   UpdateSrcOrder = "UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address indexed taker, uint256 depositAmount, uint256 desiredAmount, uint8 orderStatus, uint32 dstEid)",
 
-   CreateDstOrder = "CreateDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, uint32 dstEid)",
-   UpdateDstOrder = "UpdateDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, address indexed taker, uint256 timelock, uint8 orderStatus, uint32 dstEid)",
-   CloseDstOrder = "CloseDstOrder(uint256 indexed srcOrderId, bytes32 indexed dstOrderId, uint8 orderStatus, uint32 dstEid)",
+   CreateDstOrder = "CreateDstOrder(uint256 indexed srcOrderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid)",
+   UpdateDstOrder = "UpdateDstOrder(uint256 indexed srcOrderId, address indexed maker, address indexed taker, uint256 depositAmount, uint256 desiredAmount, uint8 orderStatus, uint32 dstEid)",
 }
 
 /**

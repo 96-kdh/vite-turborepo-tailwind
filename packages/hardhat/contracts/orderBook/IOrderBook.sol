@@ -19,20 +19,13 @@ contract IOrderBook {
         address payable taker;      // Set when the taker executes the swap.
         uint256 depositAmount;       // Amount of native tokens locked by the maker.
         uint256 desiredAmount;      // The amount the maker expects from the taker.
-        uint256 timelock;           // Expiration timestamp (Unix epoch).
         OrderStatus status;
     }
 
-    event OrderCreated(
-        bytes32 indexed orderId,
-        address indexed maker,
-        uint256 makerDeposit,
-        uint256 desiredAmount,
-        uint256 timelock
-    );
-    event OrderCanceled(bytes32 indexed orderId);
-    event OrderExecuted(
-        bytes32 indexed orderId,
-        address indexed taker
-    );
+
+    event CreateSrcOrder(uint256 indexed orderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid);
+    event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address indexed taker, uint256 depositAmount, uint256 desiredAmount, OrderStatus orderStatus, uint32 dstEid);
+
+    event CreateDstOrder(uint256 indexed srcOrderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid);
+    event UpdateDstOrder(uint256 indexed srcOrderId, address indexed maker, address indexed taker, uint256 depositAmount, uint256 desiredAmount, OrderStatus orderStatus, uint32 dstEid);
 }

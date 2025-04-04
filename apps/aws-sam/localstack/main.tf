@@ -69,6 +69,7 @@ Order
 	desiredAmount
 	timelock
 	updatedAt
+	blockNumber
  */
 resource "aws_dynamodb_table" "Order" {
   name         = "Order"

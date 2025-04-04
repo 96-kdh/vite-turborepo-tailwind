@@ -23,8 +23,9 @@ export interface OrderTableItem {
 
    depositAmount: string;
    desiredAmount: string;
-   timelock: number;
    updatedAt: number;
+   blockNumber: number;
+   dstChainId: number;
 }
 
 export interface ErrorTableItem {
@@ -37,11 +38,11 @@ export interface ErrorTableItem {
 export enum OrderStatus {
    no = 0,
    createOrder = 1,
-   createOrderLzReceive = 2,
+   createOrderReceive = 2,
    executeOrder = 3,
-   executeOrderLzReceive = 4,
+   executeOrderReceive = 4,
    claim = 5,
-   claimLzReceive = 6,
+   claimReceive = 6,
    canceled = 7,
-   canceledLzReceive = 8,
+   canceledReceive = 8,
 }

@@ -4,7 +4,7 @@
    "main": "./script/index.ts",
    "types": "./script/index.ts",
    "scripts": {
-      "dev": "npx hardhat dev",
+      "dev": "npx hardhat compile && npx hardhat dev",
       "test": "npx hardhat test",
       "compile": "npx hardhat compile"
    },

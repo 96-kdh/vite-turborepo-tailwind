@@ -3,7 +3,7 @@ import { isAddress, padHex, parseEther } from "viem";
 import { Options } from "@layerzerolabs/lz-v2-utilities";
 
 import { beforeTaskAction, encodePayloadViem } from "./utils";
-import { contractAddresses, EndpointIds, SupportChainIds } from "../constants";
+import { contractAddresses, ChainIdToEndpointId, SupportChainIds } from "../constants";
 import { Task } from "./types";
 import { getTransactionReceipt } from "viem/actions";
 import { sendEventToLocalhost } from "./OnlyLocalhost";
@@ -22,8 +22,8 @@ task(Task.createOrder, "createOrder")
          if (!(Number(chainId) in SupportChainIds)) throw new Error("not support chainId");
          if (!(Number(dstchainid) in SupportChainIds)) throw new Error("not support chainId");
 
-         const srcEid = EndpointIds[chainId];
-         const dstEid = EndpointIds[dstchainid as SupportChainIds];
+         const srcEid = ChainIdToEndpointId[chainId];
+         const dstEid = ChainIdToEndpointId[dstchainid as SupportChainIds];
 
          const [owner] = await hre.viem.getWalletClients();
          const OrderBookWithLz = await hre.viem.getContractAt("OrderBookWithLz" as string, ca);
@@ -83,7 +83,7 @@ task(Task.setPeer, "setPeer")
 
          const OrderBookWithLz = await hre.viem.getContractAt("OrderBookWithLz" as string, ca);
          await OrderBookWithLz.write.setPeer([
-            EndpointIds[Number(dstchainid) as SupportChainIds],
+            ChainIdToEndpointId[Number(dstchainid) as SupportChainIds],
             padHex(contractAddresses[Number(dstchainid) as SupportChainIds].OrderBookWithLz, { size: 32 }),
          ]);
 

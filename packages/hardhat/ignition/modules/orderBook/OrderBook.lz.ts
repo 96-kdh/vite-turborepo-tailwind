@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-import { contractAddresses, EndpointIds, ownerAddress, SupportChainIds } from "../../../script";
+import { contractAddresses, ChainIdToEndpointId, ownerAddress, SupportChainIds } from "../../../script";
 import "../index";
 
 const OrderBookModule = buildModule("OrderBookModule", function (m) {
@@ -14,7 +14,7 @@ const OrderBookModule = buildModule("OrderBookModule", function (m) {
 
    const OrderBookWithLz = m.contract(
       "OrderBookWithLz",
-      [MockEndpointV2, ownerAddress[chainId], EndpointIds[chainId]],
+      [MockEndpointV2, ownerAddress[chainId], ChainIdToEndpointId[chainId]],
       {
          id: `OrderBookWithLz_${chainId}`,
       },
