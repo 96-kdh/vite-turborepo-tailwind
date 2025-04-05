@@ -56,7 +56,7 @@ resource "aws_dynamodb_table" "Archive" {
 }
 
 /**
-Order
+OrderTable
 	orderId (partition key)
 	chainId (sort key)
 
@@ -154,5 +154,5 @@ resource "aws_sqs_queue" "eventQueue" {
   receive_wait_time_seconds = 20 //
   visibility_timeout_seconds = 20 // default 30
   fifo_queue = true
-  content_based_deduplication = false
+  content_based_deduplication = true
 }

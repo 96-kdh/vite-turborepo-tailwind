@@ -60,9 +60,8 @@ task(Task.createOrder, "createOrder")
             const receipt = await getTransactionReceipt(client, {
                hash: txHash,
             });
-            console.log(receipt);
 
-            // await sendEventToLocalhost(chainId, receipt);
+            await sendEventToLocalhost(chainId, receipt);
          }
       }),
    );

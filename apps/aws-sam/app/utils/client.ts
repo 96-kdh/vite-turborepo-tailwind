@@ -8,7 +8,7 @@ export const docClient = DynamoDBDocumentClient.from(
    new DynamoDBClient(
       process.env.NODE_ENV === "prod"
          ? { region: "ap-northeast-2" }
-         : { region: "us-east-1", endpoint: "http://host.docker.internal:4566" },
+         : { region: "ap-northeast-2", endpoint: "http://host.docker.internal:4566" },
    ),
 );
 
@@ -23,9 +23,13 @@ export const sqsClient = new SQSClient(
    process.env.NODE_ENV === "prod"
       ? { region: "ap-northeast-2" }
       : {
-           region: "us-east-1",
+           region: "ap-northeast-2",
            endpoint: "http://host.docker.internal:4566",
            useQueueUrlAsEndpoint: false,
            customUserAgent: "event-producer-local",
+           credentials: {
+              accessKeyId: "test",
+              secretAccessKey: "test",
+           },
         },
 );

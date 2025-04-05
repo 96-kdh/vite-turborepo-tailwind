@@ -21,13 +21,15 @@ import { CustomResponse, division, docClient, sqsClient } from "./utils";
 
 const coder = AbiCoder.defaultAbiCoder();
 
+// sam local invoke EventProducerFunction --event events/EventProducerFunction.json --env-vars env.local.json
 export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+   console.log(process.env.NODE_ENV);
+
    try {
       if (typeof event.body !== "string") throw new Error("The event body must be a string");
 
       const promiseTask = [];
 
-      const coder = AbiCoder.defaultAbiCoder();
       const eventBody: AlchemyWebhookPayload = JSON.parse(event.body);
       const batchEntries = [];
       let batchId = 0;
@@ -39,10 +41,10 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
          if (!isSupported) continue;
 
          const chainId = NetworkToChainId[eventBody.event.network] || 0; // Unknown chainId is zero
-         const messageId = coder.encode(
-            ["uint256", "uint256", "bytes32", "uint256"],
-            [BigInt(chainId), BigInt(eventBody.event.data.block.number), log.topics[0], BigInt(log.transaction.index)],
-         ); // chainId + blockNumber + eventSig + transactionIndex
+         // const messageId = coder.encode(
+         //    ["uint256", "uint256", "bytes32", "uint256"],
+         //    [BigInt(chainId), BigInt(eventBody.event.data.block.number), log.topics[0], BigInt(log.transaction.index)],
+         // ); // chainId + blockNumber + eventSig + transactionIndex  // 같은 데이터가 아니라면 무조건 유니크해야하는 속성
 
          const messageBody: SqsEventMessageBody = {
             blockNumber: eventBody.event.data.block.number,
@@ -55,12 +57,12 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
             Id: batchId.toString(),
             MessageBody: JSON.stringify(messageBody),
             MessageGroupId: chainId.toString(),
-            MessageDeduplicationId: messageId,
+            // MessageDeduplicationId: messageId,
          });
 
          batchId++;
       }
-      console.log("batchMsg length is ", batchId);
+
       if (batchEntries.length > 0) {
          // batch message limit 10
          const divisionEntries = division(batchEntries, 10);
@@ -70,7 +72,8 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
                Entries: entries,
             };
             const command = new SendMessageBatchCommand(params);
-            promiseTask.push(new Promise((resolve) => resolve(sqsClient.send(command))));
+            promiseTask.push(sqsClient.send(command));
+            // promiseTask.push(new Promise((resolve) => resolve(sqsClient.send(command))));
          }
 
          await Promise.all(promiseTask);
@@ -131,13 +134,15 @@ function genOrderItemBySqsMsg(message: SqsEventMessageBody): OrderTableItem | nu
       case SupportedEventSig()[SupportedEvent.CreateSrcOrder]:
       case SupportedEventSig()[SupportedEvent.UpdateSrcOrder]: {
          chainId = message.chainId;
-         [dstChainId] = coder.decode(["uint32"], "0x" + message.log.data.slice(-64)).map((v) => Number(v));
+         const [dstEid] = coder.decode(["uint32"], "0x" + message.log.data.slice(-64)).map((v) => Number(v));
+         dstChainId = EndpointIdToChainId[dstEid as SupportEndpointIds];
          break;
       }
       case SupportedEventSig()[SupportedEvent.CreateDstOrder]:
       case SupportedEventSig()[SupportedEvent.UpdateDstOrder]: {
          dstChainId = message.chainId;
-         [chainId] = coder.decode(["uint32"], "0x" + message.log.data.slice(-64)).map((v) => Number(v));
+         const [dstEid] = coder.decode(["uint32"], "0x" + message.log.data.slice(-64)).map((v) => Number(v));
+         chainId = EndpointIdToChainId[dstEid as SupportEndpointIds];
          break;
       }
       default:
@@ -161,12 +166,11 @@ function genOrderItemBySqsMsg(message: SqsEventMessageBody): OrderTableItem | nu
 
 function genOrderTableUpdateCommand(item: OrderTableItem) {
    const params: UpdateCommandInput = {
-      TableName: TableNames.Order,
+      TableName: TableNames.OrderTable,
       Key: {
          orderId: item.orderId,
          chainId: item.chainId,
       },
-      // 모든 업데이트할 필드를 명시 (GSI에 해당하는 maker, taker, orderStatus, createdAt 도 포함)
       UpdateExpression: `
       SET maker = :maker,
           taker = :taker,
@@ -178,11 +182,7 @@ function genOrderTableUpdateCommand(item: OrderTableItem) {
           blockNumber = :blockNumber,
           dstChainId = :dstChainId
     `,
-      // 조건
-      // 1. blockNumber가 없거나 현재 값이 업데이트하려는 값보다 작을 때
-      // 2. 그리고 기존의 createdAt 값이 업데이트하려는 값(:createdAt)보다 큰 경우에만 업데이트
-      ConditionExpression:
-         "(attribute_not_exists(blockNumber) OR blockNumber < :blockNumber) AND createdAt > :createdAt",
+      ConditionExpression: "attribute_not_exists(orderStatus) OR orderStatus < :orderStatus",
       ExpressionAttributeValues: {
          ":maker": item.maker,
          ":taker": item.taker,
@@ -194,31 +194,31 @@ function genOrderTableUpdateCommand(item: OrderTableItem) {
          ":blockNumber": item.blockNumber,
          ":dstChainId": item.dstChainId,
       },
-      ReturnValues: "ALL_NEW",
    };
    return new UpdateCommand(params);
 }
 
+// sam local invoke EventConsumerFunction --event events/EventConsumerFunction.json --env-vars env.local.json
 export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> => {
-   const coder = AbiCoder.defaultAbiCoder();
-
    const archiveTableBatchWriteCommandData = [];
    const archiveTableBatchWriteTask = [];
 
    const orderTableUpdateTask = [];
+   const orderItems = [];
 
    for (const record of event.Records) {
       const message: SqsEventMessageBody = JSON.parse(record.body);
       const eventSig = message.log.topics[0].toLowerCase();
 
       const orderItem = genOrderItemBySqsMsg(message);
+      orderItems.push(orderItem);
       if (!orderItem) {
          console.error("Unrecognized event sign", ", eventSig: ", eventSig, "\n message: ", message);
          continue;
       }
 
       const command = genOrderTableUpdateCommand(orderItem);
-      orderTableUpdateTask.push(new Promise((resolve) => resolve(docClient.send(command))));
+      orderTableUpdateTask.push(docClient.send(command));
 
       const archiveItem: ArchiveTableItem = {
          transactionHash: message.log.transaction.hash,
@@ -251,7 +251,7 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
          },
       });
 
-      archiveTableBatchWriteTask.push(new Promise((resolve) => resolve(docClient.send(batchWriteCommand))));
+      archiveTableBatchWriteTask.push(docClient.send(batchWriteCommand));
    }
 
    const results = await Promise.allSettled([...orderTableUpdateTask, ...archiveTableBatchWriteTask]);
@@ -259,7 +259,7 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
       const result = results[i];
       if (result.status === "rejected") {
          console.error("status is rejected, ", result);
-         console.log(i < orderTableUpdateTask.length ? orderTableUpdateTask[i] : archiveTableBatchWriteTask);
+         console.log("error item is: ", i < orderTableUpdateTask.length ? orderItems[i] : archiveTableBatchWriteTask);
          console.log(`results length is ${results.length}, error index is ${i}`);
       }
    }

@@ -1,5 +1,5 @@
 export enum TableNames {
    Archive = "Archive",
-   Order = "Order",
+   OrderTable = "Order",
    Error = "Error",
 }

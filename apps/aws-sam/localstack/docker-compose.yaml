@@ -8,3 +8,29 @@ services:
     environment:
       - SERVICES=dynamodb,sqs
       - DYNAMODB_SHARE_DB=1
+      - DEFAULT_REGION=ap-northeast-2
+
+  terraform-run:
+    image: hashicorp/terraform:1.5.2
+    container_name: terraform-run
+    volumes:
+      - ./terraform:/terraform  # Terraform 설정 파일(main.tf, provider.tf, etc.)이 있는 디렉토리
+      - terraform_shared:/shared
+    working_dir: /terraform
+    entrypoint: [ "sh", "-c", "rm -rf /shared/terraform.done && terraform init && terraform destroy -auto-approve && terraform apply -auto-approve && touch /shared/terraform.done" ]
+    restart: "no"
+
+  polling-queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: polling-queue
+    depends_on:
+      - localstack
+      - terraform-run
+    volumes:
+      - terraform_shared:/shared
+    entrypoint: [ "sh", "-c", "./wait-for-terraform.sh && node ./pollingQueue.js" ]
+
+volumes:
+  terraform_shared:

@@ -20,6 +20,7 @@ export const beforeTaskAction = async (
 
    const [owner] = await hre.viem.getWalletClients(); // hardhat config accounts 0 index
    console.log(`selected network: [${pc.red(hre.network.name)}]`);
+   console.log(`selected chainId: [${pc.red(hre.network.config.chainId)}]`);
    console.log(`selected address: [${pc.red(owner.account.address)}]`);
 
    if (!taskArgs) console.log("\n전달된 taskArgs 가 없습니다.");

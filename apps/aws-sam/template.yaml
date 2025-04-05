@@ -85,30 +85,33 @@ Resources:
         Sourcemap: true
         EntryPoints:
         - app.ts
-#  EventConsumerFunction:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      CodeUri: app/
-#      Handler: app.eventConsumer
-#      Runtime: nodejs18.x
-#      Architectures:
-#        - x86_64
-#      Timeout: 30
-#      MemorySize: 1024
-#      Events:
-#        SQSQueueEvent:
-#          Type: SQS
-#          Properties:
-#            Queue: !GetAtt EventQueue.Arn
-#            BatchSize: 10
-#            Enabled: true
-#      Policies:
-#        - SQSPollerPolicy:
-#            QueueName: EventQueue.fifo
-#    Metadata: # Manage esbuild properties
-#      BuildMethod: esbuild
-#      BuildProperties:
-#        Minify: true
-#        Target: "es2020"
-#        EntryPoints:
-#          - app.ts
+  EventConsumerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/
+      Handler: app.eventConsumer
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Timeout: 30
+      MemorySize: 1024
+      Events:
+        SQSQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventQueue.Arn
+            BatchSize: 10
+            Enabled: true
+      Environment:
+        Variables:
+          NODE_ENV: prod
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: EventQueue.fifo
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints:
+          - app.ts
