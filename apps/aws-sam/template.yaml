@@ -115,3 +115,149 @@ Resources:
         Target: "es2020"
         EntryPoints:
           - app.ts
+
+
+  # AppSync GraphQL API (API_KEY 인증 방식)
+  GraphQLApi:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: ExtendedLambdaResolverApi
+      AuthenticationType: API_KEY
+  # API Key 생성
+  GraphQLApiKey:
+    Type: AWS::AppSync::ApiKey
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+  # 확장된 GraphQL 스키마 정의
+  GraphQLSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Definition: |
+        type User {
+          id: ID!
+          name: String!
+          age: Int
+        }
+
+        type Query {
+          hello: String
+          getUser(id: ID!): User
+          listUsers: [User]
+        }
+
+        type Mutation {
+          createUser(name: String!, age: Int): User
+        }
+
+        schema {
+          query: Query
+          mutation: Mutation
+        }
+  # Lambda 함수 (확장된 Resolver 로직 구현, 컴파일된 TypeScript 코드)
+  GraphQLFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/
+      Handler: app.handler
+      Runtime: nodejs18.x
+      Policies:
+        - AWSLambdaBasicExecutionRole
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        EntryPoints:
+          - app.ts
+  # AppSync가 Lambda를 호출할 수 있도록 하는 역할
+  AppSyncServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "AppSyncServiceRole-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AppSyncLambdaInvokePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt GraphQLFunction.Arn
+  # AppSync 데이터 소스로 Lambda 함수 등록
+  GraphQLDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: LambdaDataSource
+      Type: AWS_LAMBDA
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt GraphQLFunction.Arn
+      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+  # Query.hello 필드에 대한 Resolver
+  ResolverHello:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: hello
+      DataSourceName: !GetAtt GraphQLDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+  # Query.getUser 필드에 대한 Resolver
+  ResolverGetUser:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: getUser
+      DataSourceName: !GetAtt GraphQLDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+  # Query.listUsers 필드에 대한 Resolver
+  ResolverListUsers:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listUsers
+      DataSourceName: !GetAtt GraphQLDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
+  # Mutation.createUser 필드에 대한 Resolver
+  ResolverCreateUser:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: createUser
+      DataSourceName: !GetAtt GraphQLDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke"
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.result)
