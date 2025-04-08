@@ -27,7 +27,7 @@ Resources:
         - ResourceName: EventWebHookAPI
       StageName: "StageN"
       EndpointConfiguration: REGIONAL
-      TracingEnabled: true
+      # TracingEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
       Cors:
         AllowMethods: "'GET, OPTIONS, POST, DELETE, PUT, PATCH'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -117,43 +117,49 @@ Resources:
           - app.ts
 
 
-  # AppSync GraphQL API (API_KEY 인증 방식)
+  # AppSync GraphQL API (API_KEY 인증 사용)
   GraphQLApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
-      Name: ExtendedLambdaResolverApi
+      Name: OrderGraphQLApi
       AuthenticationType: API_KEY
   # API Key 생성
   GraphQLApiKey:
     Type: AWS::AppSync::ApiKey
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
-  # 확장된 GraphQL 스키마 정의
+
+  # GraphQL 스키마 정의 (Order 타입과 4가지 Query 포함)
   GraphQLSchema:
     Type: AWS::AppSync::GraphQLSchema
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
       Definition: |
-        type User {
-          id: ID!
-          name: String!
-          age: Int
+        type Order {
+          orderId: ID!
+          chainId: Int!
+          maker: String!
+          taker: String
+          orderStatus: Int!
+          createdAt: Int!
+          depositAmount: Float
+          desiredAmount: Float
+          timelock: Int
+          updatedAt: Int
+          blockNumber: Int
         }
 
         type Query {
-          hello: String
-          getUser(id: ID!): User
-          listUsers: [User]
-        }
-
-        type Mutation {
-          createUser(name: String!, age: Int): User
+          getOrder(orderId: ID!, chainId: Int!): Order
+          listOrdersByMaker(maker: String!, createdAtFrom: Int, createdAtTo: Int): [Order!]!
+          listOrdersByTaker(taker: String!, createdAtFrom: Int, createdAtTo: Int): [Order!]!
+          listOrdersByStatus(orderStatus: Int!, createdAtFrom: Int, createdAtTo: Int): [Order!]!
         }
 
         schema {
           query: Query
-          mutation: Mutation
         }
+
   # Lambda 함수 (확장된 Resolver 로직 구현, 컴파일된 TypeScript 코드)
   GraphQLFunction:
     Type: AWS::Serverless::Function
@@ -163,6 +169,14 @@ Resources:
       Runtime: nodejs18.x
       Policies:
         - AWSLambdaBasicExecutionRole
+      Events:
+        GraphQLHTTP:
+          Type: Api
+          Properties:
+            Path: /graphql
+            Method: POST
+            Auth:
+              ApiKeyRequired: false
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -191,73 +205,94 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource: !GetAtt GraphQLFunction.Arn
-  # AppSync 데이터 소스로 Lambda 함수 등록
+
+  # AppSync 데이터 소스 (Lambda 함수 연결)
   GraphQLDataSource:
     Type: AWS::AppSync::DataSource
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
-      Name: LambdaDataSource
+      Name: OrderLambdaDataSource
       Type: AWS_LAMBDA
       LambdaConfig:
         LambdaFunctionArn: !GetAtt GraphQLFunction.Arn
       ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
-  # Query.hello 필드에 대한 Resolver
-  ResolverHello:
+
+  # Resolver: getOrder (주문 단건 조회)
+  ResolverGetOrder:
     Type: AWS::AppSync::Resolver
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
       TypeName: Query
-      FieldName: hello
+      FieldName: getOrder
       DataSourceName: !GetAtt GraphQLDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
-          "operation": "Invoke"
+          "operation": "Invoke",
+          "payload": $util.toJson({
+            "field": "$ctx.fieldName",
+            "arguments": $ctx.arguments
+          })
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)
-  # Query.getUser 필드에 대한 Resolver
-  ResolverGetUser:
+
+  # Resolver: listOrdersByMaker (maker 기준 주문 목록 조회)
+  ResolverListOrdersByMaker:
     Type: AWS::AppSync::Resolver
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
       TypeName: Query
-      FieldName: getUser
+      FieldName: listOrdersByMaker
       DataSourceName: !GetAtt GraphQLDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
-          "operation": "Invoke"
+          "operation": "Invoke",
+          "payload": $util.toJson({
+            "field": "$ctx.fieldName",
+            "arguments": $ctx.arguments
+          })
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)
-  # Query.listUsers 필드에 대한 Resolver
-  ResolverListUsers:
+
+  # Resolver: listOrdersByTaker (taker 기준 주문 목록 조회)
+  ResolverListOrdersByTaker:
     Type: AWS::AppSync::Resolver
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
       TypeName: Query
-      FieldName: listUsers
+      FieldName: listOrdersByTaker
       DataSourceName: !GetAtt GraphQLDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
-          "operation": "Invoke"
+          "operation": "Invoke",
+          "payload": $util.toJson({
+            "field": "$ctx.fieldName",
+            "arguments": $ctx.arguments
+          })
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)
-  # Mutation.createUser 필드에 대한 Resolver
-  ResolverCreateUser:
+
+  # Resolver: listOrdersByStatus (orderStatus 기준 주문 목록 조회)
+  ResolverListOrdersByStatus:
     Type: AWS::AppSync::Resolver
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: Mutation
-      FieldName: createUser
+      TypeName: Query
+      FieldName: listOrdersByStatus
       DataSourceName: !GetAtt GraphQLDataSource.Name
       RequestMappingTemplate: |
         {
           "version": "2017-02-28",
-          "operation": "Invoke"
+          "operation": "Invoke",
+          "payload": $util.toJson({
+            "field": "$ctx.fieldName",
+            "arguments": $ctx.arguments
+          })
         }
       ResponseMappingTemplate: |
         $util.toJson($ctx.result)

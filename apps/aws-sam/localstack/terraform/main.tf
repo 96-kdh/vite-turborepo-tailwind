@@ -67,7 +67,6 @@ OrderTable
 
 	depositAmount
 	desiredAmount
-	timelock
 	updatedAt
 	blockNumber
  */
@@ -107,21 +106,21 @@ resource "aws_dynamodb_table" "Order" {
     hash_key        = "maker"
     range_key       = "createdAt"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["orderId", "chainId", "taker", "depositAmount", "desiredAmount", "timelock", "orderStatus"]
+    non_key_attributes = ["orderId", "chainId", "taker", "depositAmount", "desiredAmount", "orderStatus"]
   }
   global_secondary_index {
     name            = "GSI_taker_createdAt"
     hash_key        = "taker"
     range_key       = "createdAt"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["orderId", "chainId", "maker", "depositAmount", "desiredAmount", "timelock", "orderStatus"]
+    non_key_attributes = ["orderId", "chainId", "maker", "depositAmount", "desiredAmount", "orderStatus"]
   }
   global_secondary_index {
     name            = "GSI_orderStatus_createdAt"
     hash_key        = "orderStatus"
     range_key       = "createdAt"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["orderId", "chainId", "maker", "taker", "depositAmount", "desiredAmount", "timelock"]
+    non_key_attributes = ["orderId", "chainId", "maker", "taker", "depositAmount", "desiredAmount"]
   }
 }
 

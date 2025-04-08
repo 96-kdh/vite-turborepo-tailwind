@@ -321,7 +321,7 @@ export async function sendEventToLocalhost(
                },
             },
             sequenceNumber: "",
-            network: "LOCALHOST",
+            network: chainId === SupportChainIds.LOCALHOST ? "LOCALHOST" : "LOCALHOST_COPY",
          },
       };
 

@@ -13,8 +13,6 @@ import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
 // sam local invoke EventProducerFunction --event events/EventProducerFunction.json --env-vars env.local.json
 export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-   console.log(process.env.NODE_ENV);
-
    try {
       if (typeof event.body !== "string") throw new Error("The event body must be a string");
 
