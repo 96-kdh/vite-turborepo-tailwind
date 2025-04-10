@@ -21,7 +21,7 @@ const Order = () => {
                      <img src="/vite.svg" alt="crypto" className="h-full w-full" />
                   </Avatar>
                   <div>
-                     <p className="text-lg font-medium">
+                     <p className="text-3xl text-lg font-bold font-medium underline">
                         {item.type}: {item.name}
                      </p>
                      {item.bid ? (

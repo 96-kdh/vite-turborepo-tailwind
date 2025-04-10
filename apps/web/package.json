@@ -9,10 +9,7 @@
       "lint": "eslint \"src/**/*.ts\""
    },
    "dependencies": {
-      "@radix-ui/react-dialog": "^1.1.7",
-      "@radix-ui/react-separator": "^1.1.3",
-      "@radix-ui/react-slot": "^1.2.0",
-      "@radix-ui/react-tooltip": "^1.2.0",
+      "@repo/ui": "workspace:*",
       "@reown/appkit": "1.6.8",
       "@reown/appkit-adapter-wagmi": "1.6.8",
       "@tanstack/react-query": "^5.56.2",
@@ -29,7 +26,6 @@
       "@repo/hardhat": "workspace:*",
       "@repo/tailwind-config": "workspace:*",
       "@repo/typescript-config": "workspace:*",
-      "@repo/ui": "workspace:*",
       "@types/react": "^19.0.1",
       "@types/react-dom": "^19.0.2",
       "@vitejs/plugin-react": "^3.1.0",

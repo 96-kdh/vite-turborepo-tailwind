@@ -18,7 +18,16 @@ const defaultTailwindConfig = {
          },
       },
    },
-   content: ["./index.html", "./src/**/*.{ts,tsx}", "../../packages/ui/src/**/*.{ts,tsx,css}"],
+   content: [
+      "./index.html",
+      "./src/**/*.{ts,tsx,css,js,jsx}",
+      "../../packages/ui/src/**/*.{ts,tsx,css,js,jsx}",
+      "./app/**/*.{js,ts,jsx,tsx,mdx}",
+      "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+      "./components/**/*.{js,ts,jsx,tsx,mdx}",
+      // Or if using `src` directory:
+      "./src/**/*.{js,ts,jsx,tsx,mdx}",
+   ],
 };
 
 export default defaultTailwindConfig;
