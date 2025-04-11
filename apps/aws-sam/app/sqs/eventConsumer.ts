@@ -13,7 +13,7 @@ import {
    SupportedEventSig,
    SupportEndpointIds,
    TableNames,
-} from "../vendor/@repo/hardhat/script";
+} from "../vendor/@workspace/hardhat/script";
 
 const coder = AbiCoder.defaultAbiCoder();
 

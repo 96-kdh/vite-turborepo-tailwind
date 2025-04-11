@@ -6,7 +6,7 @@ import {
    NetworkToChainId,
    SqsEventMessageBody,
    SupportedEventSig,
-} from "../vendor/@repo/hardhat/script";
+} from "../vendor/@workspace/hardhat/script";
 // @추후작업 vendor 로 포팅하는 방식을 더 깔끔한 방식으로 바꾸거나, 불필요한 부분까지 복제되는걸 막는 등 작업
 import { CustomResponse, division, sqsClient } from "../utils";
 import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";

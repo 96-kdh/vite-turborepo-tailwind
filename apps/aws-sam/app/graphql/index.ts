@@ -3,7 +3,7 @@
 import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 import { docClient } from "../utils";
-import { TableNames } from "../vendor/@repo/hardhat/script";
+import { TableNames } from "../vendor/@workspace/hardhat/script";
 import { APIGatewayProxyEvent } from "aws-lambda";
 
 interface ResolverPayload {

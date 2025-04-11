@@ -1,5 +1,5 @@
-import { Card } from "@repo/ui/components/shadcn-ui/card";
-import { Avatar } from "@repo/ui/components/shadcn-ui/avatar";
+import { Card } from "@workspace/ui/components/shadcn-ui/card";
+import { Avatar } from "@workspace/ui/components/shadcn-ui/avatar";
 
 const Order = () => {
    const data = [

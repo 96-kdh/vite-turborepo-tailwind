@@ -8,9 +8,8 @@ import { BrowserRouter } from "react-router-dom";
 import { metadata, networks, projectId, wagmiAdapter } from "./wagmi";
 import App from "./pages/App";
 
-import "@repo/tailwind-config/main.css";
-import "@repo/ui/styles/globals.css";
 import "./App.css";
+import "@workspace/ui/styles/globals.css"
 
 const queryClient = new QueryClient();
 

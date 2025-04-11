@@ -1,5 +1,5 @@
 {
-   "name": "@repo/hardhat",
+   "name": "@workspace/hardhat",
    "version": "0.0.0",
    "main": "./script/index.ts",
    "types": "./script/index.ts",
@@ -23,8 +23,8 @@
       "@nomiclabs/hardhat-ethers": "^2.2.3",
       "@openzeppelin/contracts": "^5.0.2",
       "@openzeppelin/contracts-upgradeable": "^5.0.2",
-      "@repo/eslint-config": "workspace:*",
-      "@repo/typescript-config": "workspace:*",
+      "@workspace/eslint-config": "workspace:*",
+      "@workspace/typescript-config": "workspace:*",
       "@typechain/hardhat": "^9.1.0",
       "@types/chai": "^4.3.11",
       "@types/readline-sync": "^1.4.8",

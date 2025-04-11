@@ -1,4 +1,4 @@
-import { SidebarProvider, SidebarTrigger } from "@repo/ui/components/shadcn-ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@workspace/ui/components/shadcn-ui/sidebar";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "@/components/SideNavBar";
 

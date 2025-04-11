@@ -5,6 +5,6 @@
       "dev": "npx hardhat-node node --port 8545"
    },
    "devDependencies": {
-      "@repo/hardhat": "workspace:*"
+      "@workspace/hardhat": "workspace:*"
    }
 }
