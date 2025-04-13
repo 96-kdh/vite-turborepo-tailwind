@@ -9,12 +9,9 @@
     "clean": "rm -rf .turbo && find . -name 'node_modules' -type d -prune -exec rm -rf '{}' + && find . -name '.next' -type d -prune -exec rm -rf '{}' + && rm -f package-lock.json + && pnpm install"
   },
   "devDependencies": {
-    "@workspace/eslint-config": "workspace:*",
-    "@workspace/typescript-config": "workspace:*",
     "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
-    "turbo": "^2.4.1",
-    "typescript": "5.7.3"
+    "prettier": "^3.5.3",
+    "turbo": "^2.4.1"
   },
   "packageManager": "pnpm@10.4.1",
   "engines": {

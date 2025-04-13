@@ -8,6 +8,9 @@ import { BrowserRouter } from "react-router-dom";
 import { metadata, networks, projectId, wagmiAdapter } from "./wagmi";
 import App from "./pages/App";
 
+
+
+
 import "./App.css";
 import "@workspace/ui/styles/globals.css"
 

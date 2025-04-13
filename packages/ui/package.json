@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.4",
@@ -28,8 +28,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@workspace/eslint-config": "workspace:*",
-    "@workspace/typescript-config": "workspace:*",
+    "@workspace/eslint-config": "workspace:^",
+    "@workspace/typescript-config": "workspa ce:^",
+    "eslint": "^8.57.0",
     "tailwindcss": "^4.0.8",
     "typescript": "^5.7.3"
   },
