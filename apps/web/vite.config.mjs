@@ -1,13 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import Pages from 'vite-plugin-pages';
-
-
-
-
-
-
+import Pages from "vite-plugin-pages";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
@@ -18,7 +12,16 @@ const __dirname = dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig({
-   plugins: [react(), tailwindcss()],
+   plugins: [
+      react(),
+      tailwindcss(),
+      Pages(),
+      // withReactRouter({
+      //    pageDir: "src/pages",
+      //    extensions: ["js", "jsx", "ts", "tsx"],
+      //    layout: "_layout",
+      // }),
+   ],
    resolve: {
       alias: [
          {

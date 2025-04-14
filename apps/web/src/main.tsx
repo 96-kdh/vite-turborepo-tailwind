@@ -1,57 +1,33 @@
-import { createRoot } from "react-dom/client";
-import React, { useEffect } from "react";
+import React, { Suspense } from "react";
+import ReactDOM from "react-dom/client";
 import { WagmiProvider } from "wagmi";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { createAppKit } from "@reown/appkit/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useRoutes } from "react-router-dom";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+import routes from "~react-pages";
 
-import { metadata, networks, projectId, wagmiAdapter } from "./wagmi";
-import App from "./pages/App";
+import { queryClient, wagmiAdapter, QueryClientProvider, ThemeProvider } from "@/lib";
+import AppLayout from "@/pages/_layout";
 
-import "./App.css";
+import "./index.css";
 import "@workspace/ui/styles/globals.css";
 
-const queryClient = new QueryClient();
+export function App() {
+   return <Suspense fallback={<p>Loading...</p>}>{useRoutes(routes)}</Suspense>;
+}
 
-const generalConfig = {
-   projectId,
-   networks,
-   metadata,
-   themeMode: "light" as const,
-   themeVariables: {
-      "--w3m-accent": "#000000",
-   },
-};
-
-// Create modal
-const modal = createAppKit({
-   adapters: [wagmiAdapter],
-   ...generalConfig,
-   features: {
-      analytics: true, // Optional - defaults to your Cloud configuration
-   },
-});
-
-const Main = () => {
-   useEffect(() => {
-      const openConnectModalBtn = document.getElementById("open-connect-modal");
-      const openNetworkModalBtn = document.getElementById("open-network-modal");
-
-      openConnectModalBtn?.addEventListener("click", () => modal.open());
-      openNetworkModalBtn?.addEventListener("click", () => modal.open({ view: "Networks" }));
-   }, []);
-
-   return (
-      <React.StrictMode>
-         <WagmiProvider config={wagmiAdapter.wagmiConfig}>
-            <QueryClientProvider client={queryClient}>
+ReactDOM.createRoot(document.getElementById("root")!).render(
+   <React.StrictMode>
+      <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+         <QueryClientProvider client={queryClient}>
+            <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
                <BrowserRouter>
-                  <App />
+                  <AppLayout>
+                     <App />
+                  </AppLayout>
                </BrowserRouter>
-            </QueryClientProvider>
-         </WagmiProvider>
-      </React.StrictMode>
-   );
-};
-
-createRoot(document.getElementById("app")!).render(<Main />);
+            </ThemeProvider>
+         </QueryClientProvider>
+      </WagmiProvider>
+   </React.StrictMode>,
+);

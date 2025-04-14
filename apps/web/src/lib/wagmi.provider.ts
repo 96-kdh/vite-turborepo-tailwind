@@ -1,22 +1,20 @@
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+
 import { mainnet, arbitrum, sepolia } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 import { defineChain } from "@reown/appkit/networks";
+export { WagmiProvider } from "wagmi";
 
-enum SupportChainIds {
-   LOCALHOST = 31337,
-   LOCALHOST_COPY = 31338,
-}
-// import { SupportChainIds } from "@workspace/hardhat/script/constants";
+import { SupportChainIds } from "@workspace/hardhat/script/constants";
 
 // Get projectId from https://cloud.reown.com
-export const projectId = "178e3a1df5591e0679afb2c30476cc9e"; // this is a public projectId only to use on localhost
+const projectId = "178e3a1df5591e0679afb2c30476cc9e"; // this is a public projectId only to use on localhost
 
 if (!projectId) {
    throw new Error("Project ID is not defined");
 }
 
-export const metadata = {
+const metadata = {
    name: "AppKit",
    description: "AppKit Example",
    url: "https://reown.com", // origin must match your domain & subdomain
@@ -68,4 +66,12 @@ export const wagmiAdapter = new WagmiAdapter({
    networks,
 });
 
-export const config = wagmiAdapter.wagmiConfig;
+export const generalConfig = {
+   projectId,
+   networks,
+   metadata,
+   themeMode: "light" as const,
+   themeVariables: {
+      "--w3m-accent": "#000000",
+   },
+};
