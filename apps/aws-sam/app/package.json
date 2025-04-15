@@ -6,9 +6,11 @@
       "dev": "npm run install:vendor && npm run run:lambda",
       "install:vendor": "mkdir -p ./vendor/@workspace/hardhat/script && cp -R ../../../packages/hardhat/script/* ./vendor/@workspace/hardhat/script",
       "run:lambda": "cd .. && sam local start-lambda --env-vars env.local.json && cd app",
-      "test": "npm run compile && npm run unit"
+      "test": "npm run compile && npm run unit",
+      "test:resolvers": "./graphql/resolvers/test-resolvers.sh"
    },
    "dependencies": {
+      "@aws-appsync/utils": "^1.12.0",
       "@aws-sdk/client-dynamodb": "^3.767.0",
       "@aws-sdk/client-sqs": "^3.758.0",
       "@aws-sdk/lib-dynamodb": "^3.767.0",

@@ -1,0 +1,29 @@
+type Order {
+    orderId: ID!
+    chainId: Int!
+    maker: String!
+    taker: String
+    orderStatus: Int!
+    createdAt: Int!
+    depositAmount: Float
+    desiredAmount: Float
+    timelock: Int
+    updatedAt: Int
+    blockNumber: Int
+}
+
+type PaginatedOrders {
+    items: [Order!]!
+    nextToken: String
+}
+
+type Query {
+    getOrder(orderId: ID!, chainId: Int!): Order
+    listOrdersByMaker(maker: String!, createdAtFrom: Int, createdAtTo: Int): PaginatedOrders!
+    listOrdersByTaker(taker: String!, createdAtFrom: Int, createdAtTo: Int): PaginatedOrders!
+    listOrdersByStatus(orderStatus: Int!, createdAtFrom: Int, createdAtTo: Int): PaginatedOrders!
+}
+
+schema {
+    query: Query
+}

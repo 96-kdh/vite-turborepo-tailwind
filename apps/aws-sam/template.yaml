@@ -8,291 +8,413 @@ Globals:
     Timeout: 3
 
 Resources:
-  EventQueue:
-    Type: AWS::SQS::Queue
+  #  EventQueue:
+  #    Type: AWS::SQS::Queue
+  #    Properties:
+  #      QueueName: eventQueue.fifo
+  #      VisibilityTimeout: 30
+  #      DelaySeconds: 0
+  #      ReceiveMessageWaitTimeSeconds: 20
+  #      FifoQueue: true
+  #      ContentBasedDeduplication: true
+
+  ErrorTable:
+    Type: AWS::DynamoDB::Table
     Properties:
-      QueueName: eventQueue.fifo
-      VisibilityTimeout: 30
-      DelaySeconds: 0
-      ReceiveMessageWaitTimeSeconds: 20
-      FifoQueue: true
-      ContentBasedDeduplication: true
+      AttributeDefinitions:
+        - AttributeName: functionName
+          AttributeType: S
+        - AttributeName: createdAtIndex
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: functionName
+          KeyType: HASH
+        - AttributeName: createdAtIndex
+          KeyType: RANGE
+      TableName: !Sub "Error"
+  OrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+        - AttributeName: chainId
+          AttributeType: N
+        - AttributeName: maker
+          AttributeType: S
+        - AttributeName: taker
+          AttributeType: S
+        - AttributeName: orderStatus
+          AttributeType: N
+        - AttributeName: createdAt
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+        - AttributeName: chainId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI_maker_createdAt
+          KeySchema:
+            - AttributeName: maker
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - orderId
+              - chainId
+              - taker
+              - depositAmount
+              - desiredAmount
+              - orderStatus
+        - IndexName: GSI_taker_createdAt
+          KeySchema:
+            - AttributeName: taker
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - orderId
+              - chainId
+              - maker
+              - depositAmount
+              - desiredAmount
+              - orderStatus
+        - IndexName: GSI_orderStatus_createdAt
+          KeySchema:
+            - AttributeName: orderStatus
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - orderId
+              - chainId
+              - maker
+              - taker
+              - depositAmount
+              - desiredAmount
+      TableName: !Sub "Order"
+  ArchiveTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: transactionHash
+          AttributeType: S
+        - AttributeName: logIndexChainId
+          AttributeType: S
+        - AttributeName: msgSender
+          AttributeType: S
+        - AttributeName: eventSig
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: transactionHash
+          KeyType: HASH
+        - AttributeName: logIndexChainId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI_msgSender_timestamp
+          KeySchema:
+            - AttributeName: msgSender
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - transactionHash
+              - chainId
+        - IndexName: GSI_eventSig_timestamp
+          KeySchema:
+            - AttributeName: eventSig
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - transactionHash
+              - chainId
+              - msgSender
+              - topics
+              - data
+      TableName: !Sub "Archive"
+
+#
+#
+#  Api:
+#    Type: AWS::Serverless::Api
+#    Properties:
+#      Name: !Sub
+#        - ${ResourceName} From Stack ${AWS::StackName}
+#        - ResourceName: EventWebHookAPI
+#      StageName: "StageN"
+#      EndpointConfiguration: REGIONAL
+#      # TracingEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
+#      Cors:
+#        AllowMethods: "'GET, OPTIONS, POST, DELETE, PUT, PATCH'"
+#        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+#        AllowOrigin: "'*'"
+#        MaxAge: "'500'"
+#      Auth:
+#        ApiKeyRequired: true # 각 연결된 람다에서 require key 속성을 false 로 변경해야함
+#        AddDefaultAuthorizerToCorsPreflight: false
+#        AddApiKeyRequiredToCorsPreflight: false # api key 추가하고 해당 속성 때문에 하루종일 날렸음 (포스트맨에서는 정상, web 브라우저에서는 Preflight 때문에 헤더에 key 가 빠져있는 상태때문에 cors, 403 error 처럼 리턴)
+#      CacheClusterEnabled: true
+#      CacheClusterSize: "0.5"
+#  ApiKey:
+#    Type: AWS::ApiGateway::ApiKey
+#    Properties:
+#      Enabled: true
+#  UsagePlanNoLimit:
+#    Type: AWS::ApiGateway::UsagePlan
+#    Properties:
+#      ApiStages:
+#        - ApiId: !Ref Api
+#          Stage: "StageN"
+#  UsagePlanMapReporting:
+#    Type: AWS::ApiGateway::UsagePlanKey
+#    Properties:
+#      KeyId: !Ref ApiKey
+#      KeyType: API_KEY
+#      UsagePlanId: !Ref UsagePlanNoLimit
+#
+#
+#  EventProducerFunction:
+#    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+#    Properties:
+#      CodeUri: app/
+#      Handler: app.eventProducer
+#      Runtime: nodejs20.x
+#      Architectures:
+#        - x86_64
+#      Events:
+#        API:
+#          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+#          Properties:
+#            Path: /event
+#            Method: post
+#            RestApiId: !Ref Api
+#            Auth:
+#              ApiKeyRequired: false
+#      Environment:
+#        Variables:
+#          NODE_ENV: prod
+#    Metadata: # Manage esbuild properties
+#      BuildMethod: esbuild
+#      BuildProperties:
+#        Minify: true
+#        Target: "es2020"
+#        Sourcemap: true
+#        EntryPoints:
+#        - app.ts
+#  EventConsumerFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      CodeUri: app/
+#      Handler: app.eventConsumer
+#      Runtime: nodejs18.x
+#      Architectures:
+#        - x86_64
+#      Timeout: 30
+#      MemorySize: 1024
+#      Events:
+#        SQSQueueEvent:
+#          Type: SQS
+#          Properties:
+#            Queue: !GetAtt EventQueue.Arn
+#            BatchSize: 10
+#            Enabled: true
+#      Environment:
+#        Variables:
+#          NODE_ENV: prod
+#      Policies:
+#        - SQSPollerPolicy:
+#            QueueName: EventQueue.fifo
+#    Metadata: # Manage esbuild properties
+#      BuildMethod: esbuild
+#      BuildProperties:
+#        Minify: true
+#        Target: "es2020"
+#        EntryPoints:
+#          - app.ts
 
 
-  Api:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Sub
-        - ${ResourceName} From Stack ${AWS::StackName}
-        - ResourceName: EventWebHookAPI
-      StageName: "StageN"
-      EndpointConfiguration: REGIONAL
-      # TracingEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
-      Cors:
-        AllowMethods: "'GET, OPTIONS, POST, DELETE, PUT, PATCH'"
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: "'*'"
-        MaxAge: "'500'"
-      Auth:
-        ApiKeyRequired: true # 각 연결된 람다에서 require key 속성을 false 로 변경해야함
-        AddDefaultAuthorizerToCorsPreflight: false
-        AddApiKeyRequiredToCorsPreflight: false # api key 추가하고 해당 속성 때문에 하루종일 날렸음 (포스트맨에서는 정상, web 브라우저에서는 Preflight 때문에 헤더에 key 가 빠져있는 상태때문에 cors, 403 error 처럼 리턴)
-      CacheClusterEnabled: true
-      CacheClusterSize: "0.5"
-  ApiKey:
-    Type: AWS::ApiGateway::ApiKey
-    Properties:
-      Enabled: true
-  UsagePlanNoLimit:
-    Type: AWS::ApiGateway::UsagePlan
-    Properties:
-      ApiStages:
-        - ApiId: !Ref Api
-          Stage: "StageN"
-  UsagePlanMapReporting:
-    Type: AWS::ApiGateway::UsagePlanKey
-    Properties:
-      KeyId: !Ref ApiKey
-      KeyType: API_KEY
-      UsagePlanId: !Ref UsagePlanNoLimit
+#  # Lambda 함수 (확장된 Resolver 로직 구현, 컴파일된 TypeScript 코드)
+#  GraphQLFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      CodeUri: app/
+#      Handler: app.handler
+#      Runtime: nodejs18.x
+#      Policies:
+#        - AWSLambdaBasicExecutionRole
+#      Events:
+#        GraphQLHTTP:
+#          Type: Api
+#          Properties:
+#            Path: /graphql
+#            Method: POST
+#    Metadata: # Manage esbuild properties
+#      BuildMethod: esbuild
+#      BuildProperties:
+#        Minify: true
+#        Target: "es2020"
+#        EntryPoints:
+#          - app.ts
 
 
-  EventProducerFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: app/
-      Handler: app.eventProducer
-      Runtime: nodejs20.x
-      Architectures:
-        - x86_64
-      Events:
-        API:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /event
-            Method: post
-            RestApiId: !Ref Api
-            Auth:
-              ApiKeyRequired: false
-      Environment:
-        Variables:
-          NODE_ENV: prod
-    Metadata: # Manage esbuild properties
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: "es2020"
-        Sourcemap: true
-        EntryPoints:
-        - app.ts
-  EventConsumerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: app/
-      Handler: app.eventConsumer
-      Runtime: nodejs18.x
-      Architectures:
-        - x86_64
-      Timeout: 30
-      MemorySize: 1024
-      Events:
-        SQSQueueEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt EventQueue.Arn
-            BatchSize: 10
-            Enabled: true
-      Environment:
-        Variables:
-          NODE_ENV: prod
-      Policies:
-        - SQSPollerPolicy:
-            QueueName: EventQueue.fifo
-    Metadata: # Manage esbuild properties
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: "es2020"
-        EntryPoints:
-          - app.ts
-
-
-  # AppSync GraphQL API (API_KEY 인증 사용)
-  GraphQLApi:
+  #### Appsync API ####
+  AppsyncGraphQLApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
-      Name: OrderGraphQLApi
+      Name: !Sub "AppsyncGraphQLApi-${AWS::StackName}"
       AuthenticationType: API_KEY
-  # API Key 생성
-  GraphQLApiKey:
+      LogConfig:
+        ExcludeVerboseContent: false
+        FieldLogLevel: "ALL"
+        CloudWatchLogsRoleArn: !GetAtt AppsyncPushToCloudWatchLogsRole.Arn
+      XrayEnabled: true
+  AppsyncGraphQLApiKey:
     Type: AWS::AppSync::ApiKey
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-
-  # GraphQL 스키마 정의 (Order 타입과 4가지 Query 포함)
-  GraphQLSchema:
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+  AppsyncGraphQLApiSchema:
     Type: AWS::AppSync::GraphQLSchema
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Definition: |
-        type Order {
-          orderId: ID!
-          chainId: Int!
-          maker: String!
-          taker: String
-          orderStatus: Int!
-          createdAt: Int!
-          depositAmount: Float
-          desiredAmount: Float
-          timelock: Int
-          updatedAt: Int
-          blockNumber: Int
-        }
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+      DefinitionS3Location: './app/graphql/schema.graphql'
 
-        type Query {
-          getOrder(orderId: ID!, chainId: Int!): Order
-          listOrdersByMaker(maker: String!, createdAtFrom: Int, createdAtTo: Int): [Order!]!
-          listOrdersByTaker(taker: String!, createdAtFrom: Int, createdAtTo: Int): [Order!]!
-          listOrdersByStatus(orderStatus: Int!, createdAtFrom: Int, createdAtTo: Int): [Order!]!
-        }
-
-        schema {
-          query: Query
-        }
-
-  # Lambda 함수 (확장된 Resolver 로직 구현, 컴파일된 TypeScript 코드)
-  GraphQLFunction:
-    Type: AWS::Serverless::Function
+  #### Appsync API Logging ####
+  AppsyncGraphQLApiLogGroup:
+    Type: AWS::Logs::LogGroup
     Properties:
-      CodeUri: app/
-      Handler: app.handler
-      Runtime: nodejs18.x
-      Policies:
-        - AWSLambdaBasicExecutionRole
-      Events:
-        GraphQLHTTP:
-          Type: Api
-          Properties:
-            Path: /graphql
-            Method: POST
-            Auth:
-              ApiKeyRequired: false
-    Metadata: # Manage esbuild properties
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: "es2020"
-        EntryPoints:
-          - app.ts
-  # AppSync가 Lambda를 호출할 수 있도록 하는 역할
-  AppSyncServiceRole:
+      LogGroupName: !Sub "/aws/appsync/apis/${AppsyncGraphQLApi.ApiId}"
+      RetentionInDays: 7
+  AppsyncPushToCloudWatchLogsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "AppSyncServiceRole-${Environment}"
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: appsync.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: AppSyncLambdaInvokePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: !GetAtt GraphQLFunction.Arn
+              Service:
+                - appsync.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  AppsyncPushToCloudWatchLogsRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-AppsyncPushToCloudWatchLogs-Policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !GetAtt AppsyncGraphQLApiLogGroup.Arn
+      Roles:
+        - !Ref AppsyncPushToCloudWatchLogsRole
 
-  # AppSync 데이터 소스 (Lambda 함수 연결)
-  GraphQLDataSource:
+  #### Appsync DynamoDB Datasource ####
+  AppsyncDynamoDBDatasourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - appsync.amazonaws.com
+  AppsyncDynamoDBDatasourceRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-AppsyncDynamoDB-Policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrderTable}"
+              - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrderTable}/*"
+      Roles:
+        - !Ref AppsyncDynamoDBDatasourceRole
+
+  AppsyncGraphQLApiDataSource:
     Type: AWS::AppSync::DataSource
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
       Name: OrderLambdaDataSource
-      Type: AWS_LAMBDA
-      LambdaConfig:
-        LambdaFunctionArn: !GetAtt GraphQLFunction.Arn
-      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+      Type: "AMAZON_DYNAMODB"
+      ServiceRoleArn: !GetAtt AppsyncDynamoDBDatasourceRole.Arn
+      DynamoDBConfig:
+        AwsRegion: !Sub "${AWS::Region}"
+        TableName: !Ref OrderTable
 
-  # Resolver: getOrder (주문 단건 조회)
+
+
+  #### Appsync Resolvers ####
   ResolverGetOrder:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
       TypeName: Query
       FieldName: getOrder
-      DataSourceName: !GetAtt GraphQLDataSource.Name
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": $util.toJson({
-            "field": "$ctx.fieldName",
-            "arguments": $ctx.arguments
-          })
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result)
-
-  # Resolver: listOrdersByMaker (maker 기준 주문 목록 조회)
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/getOrder.js
   ResolverListOrdersByMaker:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
       TypeName: Query
       FieldName: listOrdersByMaker
-      DataSourceName: !GetAtt GraphQLDataSource.Name
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": $util.toJson({
-            "field": "$ctx.fieldName",
-            "arguments": $ctx.arguments
-          })
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result)
-
-  # Resolver: listOrdersByTaker (taker 기준 주문 목록 조회)
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrdersByMaker.js
   ResolverListOrdersByTaker:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
       TypeName: Query
       FieldName: listOrdersByTaker
-      DataSourceName: !GetAtt GraphQLDataSource.Name
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": $util.toJson({
-            "field": "$ctx.fieldName",
-            "arguments": $ctx.arguments
-          })
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result)
-
-  # Resolver: listOrdersByStatus (orderStatus 기준 주문 목록 조회)
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrdersByTaker.js
   ResolverListOrdersByStatus:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
       TypeName: Query
       FieldName: listOrdersByStatus
-      DataSourceName: !GetAtt GraphQLDataSource.Name
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": $util.toJson({
-            "field": "$ctx.fieldName",
-            "arguments": $ctx.arguments
-          })
-        }
-      ResponseMappingTemplate: |
-        $util.toJson($ctx.result)
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrdersByStatus.js
