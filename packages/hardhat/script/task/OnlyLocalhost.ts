@@ -270,7 +270,7 @@ export async function sendEventToLocalhost(
    }
 
    const config = {
-      region: "ap-northeast-2", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
+      region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
       endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
    };
    const client = new LambdaClient(config);

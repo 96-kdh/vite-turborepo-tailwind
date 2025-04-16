@@ -13,7 +13,7 @@ import {
    SupportedEventSig,
    SupportEndpointIds,
    TableNames,
-} from "../vendor/@workspace/hardhat/script";
+} from "../../../../packages/hardhat/script";
 
 const coder = AbiCoder.defaultAbiCoder();
 
@@ -130,6 +130,8 @@ function genOrderTableUpdateCommand(item: OrderTableItem) {
 
 // sam local invoke EventConsumerFunction --event events/EventConsumerFunction.json --env-vars env.local.json
 export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> => {
+   console.log("eventConsumer process.env.NODE_ENV: ", process.env.NODE_ENV);
+
    const archiveTableBatchWriteCommandData = [];
    const archiveTableBatchWriteTask = [];
 

@@ -1,20 +1,23 @@
-import { AbiCoder } from "ethers";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
+import { CustomResponse, division, sqsClient } from "../utils";
 import {
    AlchemyWebhookPayload,
    NetworkToChainId,
    SqsEventMessageBody,
    SupportedEventSig,
-} from "../vendor/@workspace/hardhat/script";
+} from "../../../../packages/hardhat/script";
 // @추후작업 vendor 로 포팅하는 방식을 더 깔끔한 방식으로 바꾸거나, 불필요한 부분까지 복제되는걸 막는 등 작업
-import { CustomResponse, division, sqsClient } from "../utils";
-import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
 // sam local invoke EventProducerFunction --event events/EventProducerFunction.json --env-vars env.local.json
 export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+   console.log("in true, ... ", event.body);
    try {
       if (typeof event.body !== "string") throw new Error("The event body must be a string");
+
+      console.log("eventProducer process.env.NODE_ENV: ", process.env.NODE_ENV);
+      console.log("eventProducer sqsClient.config.endpoint: ", sqsClient.config.endpoint?.toString());
 
       const promiseTask = [];
 
@@ -56,7 +59,7 @@ export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGat
          const divisionEntries = division(batchEntries, 10);
          for (const entries of divisionEntries) {
             const params = {
-               QueueUrl: "http://host.docker.internal:4566/000000000000/eventQueue.fifo",
+               QueueUrl: `${process.env.IS_DOCKER === "true" ? "http://localstack:4566" : "http://host.docker.internal:4566"}/000000000000/eventQueue.fifo`,
                Entries: entries,
             };
             const command = new SendMessageBatchCommand(params);

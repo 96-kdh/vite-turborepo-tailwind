@@ -2,7 +2,7 @@
 node_modules
 .turbo
 *.log
-dist
+apps/aws-sam/app/dist
 dist-ssr
 *.local
 .env

@@ -1,5 +1,5 @@
 provider "aws" {
-  region                  = "ap-northeast-2"  # You can set this to any AWS region
+  region                  = "us-east-1"  # You can set this to any AWS region
   access_key              = "test"         # 더미 Access Key
   secret_key              = "test"         # 더미 Secret Key
   skip_credentials_validation = true
@@ -8,5 +8,7 @@ provider "aws" {
   endpoints {
     sqs       = "http://localstack:4566"
     dynamodb  = "http://localstack:4566"
+    lambda    = "http://localstack:4566"
+    apigateway  = "http://localstack:4566"
   }
 }

@@ -1,28 +1,48 @@
 import { util } from "@aws-appsync/utils";
+import { now } from "../../utils";
 
 export function request(ctx) {
-   const {
-      orderStatus,
-      createdAtFrom = 0,
-      createdAtTo = util.time.nowEpochMilliSeconds(),
-      nextToken,
-      limit = 20,
-   } = ctx.args;
+   if (util.dynamodb) {
+      const {
+         orderStatus,
+         createdAtFrom = 0,
+         createdAtTo = util.time.nowEpochMilliSeconds(),
+         nextToken,
+         limit = 20,
+      } = ctx.args;
 
-   return {
-      operation: "Query",
-      index: "GSI_orderStatus_createdAt",
-      query: {
-         expression: "orderStatus = :status AND createdAt BETWEEN :from AND :to",
-         expressionValues: {
-            ":status": util.dynamodb.toDynamoDB(orderStatus),
-            ":from": util.dynamodb.toDynamoDB(createdAtFrom),
-            ":to": util.dynamodb.toDynamoDB(createdAtTo),
+      return {
+         operation: "Query",
+         index: "GSI_orderStatus_createdAt",
+         query: {
+            expression: "orderStatus = :status AND createdAt BETWEEN :from AND :to",
+            expressionValues: {
+               ":status": util.dynamodb.toDynamoDB(orderStatus),
+               ":from": util.dynamodb.toDynamoDB(createdAtFrom),
+               ":to": util.dynamodb.toDynamoDB(createdAtTo),
+            },
          },
-      },
-      nextToken,
-      limit,
-   };
+         nextToken,
+         limit,
+      };
+   } else {
+      const { orderStatus, createdAtFrom = 0, createdAtTo = now(), nextToken, limit = 20 } = ctx.args;
+
+      return {
+         operation: "Query",
+         index: "GSI_orderStatus_createdAt",
+         query: {
+            expression: "orderStatus = :status AND createdAt BETWEEN :from AND :to",
+            expressionValues: {
+               ":status": orderStatus,
+               ":from": createdAtFrom,
+               ":to": createdAtTo,
+            },
+         },
+         nextToken,
+         limit,
+      };
+   }
 }
 
 export function response(ctx) {

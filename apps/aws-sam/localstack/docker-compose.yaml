@@ -6,31 +6,22 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=dynamodb,sqs
+      - SERVICES=dynamodb,sqs,lambda,apigateway
       - DYNAMODB_SHARE_DB=1
-      - DEFAULT_REGION=ap-northeast-2
-
+      - DEFAULT_REGION=us-east-1
+      - LAMBDA_EXECUTOR=docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
   terraform-run:
     image: hashicorp/terraform:1.5.2
     container_name: terraform-run
     volumes:
-      - ./terraform:/terraform  # Terraform 설정 파일(main.tf, provider.tf, etc.)이 있는 디렉토리
-      - terraform_shared:/shared
+      - ./terraform:/terraform  # Terraform 설정 파일(main.tf, provider.tf 등)
+      - ../app/dist:/dist        # Lambda zip 파일 위치
     working_dir: /terraform
-    entrypoint: [ "sh", "-c", "rm -rf /shared/terraform.done && terraform init && terraform destroy -auto-approve && terraform apply -auto-approve && touch /shared/terraform.done" ]
+    entrypoint: [
+      "sh",
+      "-c",
+      "terraform init && terraform destroy -auto-approve && terraform apply -auto-approve"
+    ]
     restart: "no"
-
-  polling-queue:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: polling-queue
-    depends_on:
-      - localstack
-      - terraform-run
-    volumes:
-      - terraform_shared:/shared
-    entrypoint: [ "sh", "-c", "./wait-for-terraform.sh && node ./pollingQueue.js" ]
-
-volumes:
-  terraform_shared:
