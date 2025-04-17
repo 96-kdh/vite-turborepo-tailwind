@@ -29,9 +29,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <div>
          <SidebarProvider>
             <AppSidebar />
-            <main className="w-full">
+            <main className="relative min-h-screen w-full">
                <AppHeader />
-               {children}
+               <section className="min-h-[calc(100vh-4rem)] w-full">{children}</section>
             </main>
          </SidebarProvider>
       </div>

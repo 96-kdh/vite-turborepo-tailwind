@@ -5,62 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="daf9e0ba-1c95-4b39-be4e-270377754262" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/apps/aws-sam/.idea/aws-sam.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/local-server.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/app.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/getOrder.js" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/getOrder.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/@workspace/typescript-config/base.json" beforeDir="false" afterPath="$PROJECT_DIR$/apps/web/src/components/Modal/BidTokenModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/local-server.js" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/local-server.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/listOrdersByMaker.js" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/listOrdersByMaker.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/listOrdersByStatus.js" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/listOrdersByStatus.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/listOrdersByTaker.js" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/resolvers/listOrdersByTaker.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/graphql/schema.graphql" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/graphql/schema.graphql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/sqs/eventConsumer.ts" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/sqs/eventConsumer.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/sqs/eventProducer.ts" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/sqs/eventProducer.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/utils/client.ts" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/app/utils/client.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/constants/address.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/constants/dynamodb.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/constants/event.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/constants/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/constants/network.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/task/OnlyLocalhost.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/task/OrderBookWithLz.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/task/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/task/types/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/task/utils/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/types/alchemy.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/types/dynamodb.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/types/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@repo/hardhat/script/types/network.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/constants/address.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/constants/dynamodb.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/constants/event.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/constants/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/constants/network.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/task/OnlyLocalhost.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/task/OrderBookWithLz.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/task/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/task/types/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/task/utils/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/types/alchemy.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/types/dynamodb.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/types/index.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/app/vendor/@workspace/hardhat/script/types/network.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/Dockerfile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/docker-compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/localstack/docker-compose.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/package.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/pollingQueue.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/terraform/main.tf" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/localstack/terraform/main.tf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/terraform/provider.tf" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/localstack/terraform/provider.tf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/localstack/wait-for-terraform.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/aws-sam/template.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/apps/aws-sam/template.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/web/.eslintrc.cjs" beforeDir="false" afterPath="$PROJECT_DIR$/apps/web/.eslintrc.cjs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/web/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/apps/web/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/hardhat/script/task/OnlyLocalhost.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/hardhat/script/task/OnlyLocalhost.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/web/src/pages/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/apps/web/src/pages/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/web/src/pages/order/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/apps/web/src/pages/order/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/ui/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/packages/ui/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/ui/src/components/shadcn-ui/button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/ui/src/components/shadcn-ui/button.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/ui/src/styles/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/packages/ui/src/styles/globals.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -86,7 +44,7 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/dan/IdeaProjects/turborepo/shadcn-ui-vite/apps/aws-sam/app/graphql",
+    "last_opened_file_path": "/Users/dan/IdeaProjects/turborepo/shadcn-ui-vite/apps/web",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.standard": "true",
     "node.js.detected.package.tslint": "true",
@@ -102,6 +60,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/apps/web" />
       <recent name="$PROJECT_DIR$/apps/aws-sam/app/graphql" />
       <recent name="$PROJECT_DIR$/apps/web/src" />
     </key>
@@ -137,7 +96,7 @@
       <updated>1744563428906</updated>
       <workItem from="1744563430414" duration="33062000" />
       <workItem from="1744714099004" duration="34000" />
-      <workItem from="1744714144763" duration="32539000" />
+      <workItem from="1744714144763" duration="54556000" />
     </task>
     <servers />
   </component>

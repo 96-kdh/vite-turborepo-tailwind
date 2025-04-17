@@ -3,13 +3,12 @@ import { readFileSync } from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 import { request as getOrderRequest } from "./resolvers/getOrder.js";
-import { request as listOrdersByStatusRequest } from "./resolvers/listOrdersByStatus.js";
-import { request as listOrdersByTakerRequest } from "./resolvers/listOrdersByTaker.js";
 import { request as listOrdersByMakerRequest } from "./resolvers/listOrdersByMaker.js";
+import { request as listOrdersByTakerRequest } from "./resolvers/listOrdersByTaker.js";
+import { request as listOrdersByStatusRequest } from "./resolvers/listOrdersByStatus.js";
 
 // ✅ ESM용 __dirname 대체
 const __filename = fileURLToPath(import.meta.url);
@@ -37,13 +36,55 @@ const resolvers = {
          return res.Item;
       },
       listOrdersByMaker: async (_, args) => {
-         // 필요한 경우 여기도 연결
+         const { index, query, nextToken, limit } = listOrdersByMakerRequest({ args });
+         const res = await dynamoClient.send(
+            new QueryCommand({
+               TableName: "Order",
+               IndexName: index,
+               KeyConditionExpression: query.expression,
+               ExpressionAttributeValues: query.expressionValues,
+               Limit: limit,
+               ExclusiveStartKey: nextToken,
+            }),
+         );
+         return {
+            items: res.Items,
+            nextToken: res.LastEvaluatedKey,
+         };
       },
       listOrdersByTaker: async (_, args) => {
-         // 필요한 경우 여기도
+         const { index, query, nextToken, limit } = listOrdersByTakerRequest({ args });
+         const res = await dynamoClient.send(
+            new QueryCommand({
+               TableName: "Order",
+               IndexName: index,
+               KeyConditionExpression: query.expression,
+               ExpressionAttributeValues: query.expressionValues,
+               Limit: limit,
+               ExclusiveStartKey: nextToken,
+            }),
+         );
+         return {
+            items: res.Items,
+            nextToken: res.LastEvaluatedKey,
+         };
       },
       listOrdersByStatus: async (_, args) => {
-         // 필요한 경우 여기도 연결
+         const { index, query, nextToken, limit } = listOrdersByStatusRequest({ args });
+         const res = await dynamoClient.send(
+            new QueryCommand({
+               TableName: "Order",
+               IndexName: index,
+               KeyConditionExpression: query.expression,
+               ExpressionAttributeValues: query.expressionValues,
+               Limit: limit,
+               ExclusiveStartKey: nextToken,
+            }),
+         );
+         return {
+            items: res.Items,
+            nextToken: res.LastEvaluatedKey,
+         };
       },
    },
 };

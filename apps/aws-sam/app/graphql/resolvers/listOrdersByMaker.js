@@ -1,5 +1,4 @@
 import { util } from "@aws-appsync/utils";
-import { now } from "../../utils";
 
 export function request(ctx) {
    if (util.dynamodb) {
@@ -26,7 +25,7 @@ export function request(ctx) {
          limit,
       };
    } else {
-      const { maker, createdAtFrom = 0, createdAtTo = now(), nextToken, limit = 20 } = ctx.args;
+      const { maker, createdAtFrom = 0, createdAtTo = Date.now(), nextToken, limit = 20 } = ctx.args;
 
       return {
          operation: "Query",
