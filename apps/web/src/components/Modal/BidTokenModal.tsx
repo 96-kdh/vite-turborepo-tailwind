@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PlusIcon } from "lucide-react";
+import { useAppKit, useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react";
+import type { AppKitNetwork } from "@reown/appkit/networks";
 
-import { networks } from "@/lib";
+import { networks, publicClients } from "@/lib";
 
 import { Button } from "@workspace/ui/components/shadcn-ui/button";
 import {
@@ -21,18 +23,39 @@ import {
    SelectItem,
 } from "@workspace/ui/components/shadcn-ui/select";
 import { Input } from "@workspace/ui/components/shadcn-ui/input";
-import { useAppKit, useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react";
-import type { AppKitNetwork } from "@reown/appkit/networks";
+import {
+   contractAddresses,
+   ContractNames,
+   SupportChainIds,
+   lzReceiveOption,
+   encodePayloadOrderBook,
+   ChainIdToEndpointId,
+} from "@workspace/hardhat";
+import { OrderBookABI } from "@/utils/constant";
+import { useCustomWriteContract, useCustomReadContract } from "@/hooks/useContract";
+
+import { abi } from "@workspace/hardhat/artifacts/contracts/orderBook/IOrderBook.sol/IOrderBook.json";
+import type { OrderBook } from "@workspace/hardhat/typechain-types/contracts/exchange/OrderBook.sol/OrderBook";
+import { useWaitForTransactionReceipt } from "wagmi";
 
 export const BidTokenModal: React.FC = () => {
    const { chainId, switchNetwork } = useAppKitNetwork();
-   const { isConnected } = useAppKitAccount(); // AppKit hook to get the address and check if the user is connected
+   const { address, isConnected } = useAppKitAccount(); // AppKit hook to get the account information
    const { open } = useAppKit();
+
+   const { write, data: writeData, error: writeError, isSuccess } = useCustomWriteContract<OrderBook, "createOrder">();
+
+   const { data: receipt } = useWaitForTransactionReceipt({
+      hash: writeData,
+      // confirmations: 2, // Wait for at least 2 confirmation
+      timeout: 300000, // Timeout in milliseconds (5 minutes)
+      pollingInterval: 1000,
+   });
 
    const [fromNetwork, setFromNetwork] = useState<string>("");
    const [toNetwork, setToNetwork] = useState<string>("");
 
-   const bidOrder = () => {
+   const bidOrder = async () => {
       if (!isConnected) return open();
       else if (Number(chainId) !== Number(fromNetwork)) {
          const selectedNetwork = networks.filter((network) => Number(network.id) === Number(fromNetwork));
@@ -40,8 +63,55 @@ export const BidTokenModal: React.FC = () => {
          return switchNetwork(selectedNetwork[0] as AppKitNetwork);
       }
 
-      console.log(fromNetwork);
+      const fromNetworkId: SupportChainIds = Number(fromNetwork);
+      const toNetworkId: SupportChainIds = Number(toNetwork);
+      console.assert(fromNetworkId in SupportChainIds, "fromNetwork must be a SupportChainIds");
+      console.assert(toNetworkId in SupportChainIds, "toNetworkId must be a SupportChainIds");
+
+      const client = publicClients[fromNetworkId];
+
+      const ca = contractAddresses[Number(fromNetwork) as SupportChainIds][ContractNames.OrderBookWithLz];
+      const { createOrder } = encodePayloadOrderBook();
+      const payload = createOrder({
+         orderId: 0n,
+         sender: address as `0x${string}`,
+         srcEid: ChainIdToEndpointId[fromNetworkId],
+         depositAmount: 10000n,
+         dstEid: ChainIdToEndpointId[toNetworkId],
+         desiredAmount: 20000n,
+      });
+      console.log("payload: ", payload);
+
+      // const res = await client.getGasPrice();
+
+      const option = lzReceiveOption(200_000n);
+      console.log("option: ", option);
+
+      const abc = await client.readContract({
+         address: ca,
+         abi: abi,
+         functionName: "quote",
+         args: [ChainIdToEndpointId[toNetworkId], payload, option, false],
+      });
+
+      console.log(abc);
+
+      write({
+         address: ca,
+         abi: OrderBookABI,
+         functionName: "createOrder",
+         args: [ChainIdToEndpointId[toNetworkId], 10000n, 20000n, option],
+         value: BigInt(abc.nativeFee) + 10000n,
+      });
    };
+
+   useEffect(() => {
+      console.log("writeData: ", writeData);
+      console.log("writeError: ", writeError);
+      console.log("isSuccess: ", isSuccess);
+
+      console.log("receipt: ", receipt);
+   }, [writeData, writeError, isSuccess, receipt]);
 
    return (
       <Dialog>
@@ -56,8 +126,8 @@ export const BidTokenModal: React.FC = () => {
          </DialogTrigger>
 
          <DialogContent className="p-0 sm:mx-auto sm:max-w-lg">
-            <Card className="w-full">
-               <DialogHeader className="px-2.5">
+            <Card className="w-full border-none">
+               <DialogHeader className="px-4">
                   <DialogTitle>주문서 작성</DialogTitle>
                   <DialogDescription>교환할 네트워크와 토큰, 수량을 입력하고 주문을 제안하세요.</DialogDescription>
                </DialogHeader>
@@ -115,6 +185,7 @@ export const BidTokenModal: React.FC = () => {
                      onClick={bidOrder}
                      variant="brand"
                      className="flex w-full items-center justify-center"
+                     size="lg"
                      // disabled={true}
                   >
                      <PlusIcon className="mr-2 h-4 w-4" />

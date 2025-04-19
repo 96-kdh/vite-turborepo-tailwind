@@ -1,11 +1,11 @@
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-
 import { mainnet, arbitrum, sepolia } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 import { defineChain } from "@reown/appkit/networks";
 export { WagmiProvider } from "wagmi";
+import { Chain, createPublicClient, http, PublicClient } from "viem";
 
-import { SupportChainIds } from "@workspace/hardhat/script/constants";
+import { JsonRPC, SupportChainIds } from "@workspace/hardhat/script/constants";
 
 // Get projectId from https://cloud.reown.com
 const projectId = "178e3a1df5591e0679afb2c30476cc9e"; // this is a public projectId only to use on localhost
@@ -59,6 +59,20 @@ const localhost_copy = defineChain({
 
 // for custom networks visit -> https://docs.reown.com/appkit/react/core/custom-networks
 export const networks = [mainnet, arbitrum, sepolia, localhost, localhost_copy] as [AppKitNetwork, ...AppKitNetwork[]];
+
+export const publicClients: Record<SupportChainIds, PublicClient> = networks.reduce(
+   (clients, network) => {
+      clients[network.id as SupportChainIds] = createPublicClient({
+         chain: {
+            id: Number(network.id),
+            name: network.name,
+         } as Chain,
+         transport: http(network.rpcUrls.default.http[0] || JsonRPC[Number(network.id) as SupportChainIds]),
+      });
+      return clients;
+   },
+   {} as Record<SupportChainIds, PublicClient>,
+);
 
 //Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({

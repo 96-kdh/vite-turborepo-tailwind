@@ -2,7 +2,7 @@ import { AbiCoder, ZeroAddress } from "ethers";
 import { BatchWriteCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 import { SQSEvent, SQSHandler } from "aws-lambda";
 
-import { division, docClient } from "../utils";
+import { division, docClient } from "utils";
 import {
    ArchiveTableItem,
    EndpointIdToChainId,
@@ -13,7 +13,7 @@ import {
    SupportedEventSig,
    SupportEndpointIds,
    TableNames,
-} from "../../../../packages/hardhat/script";
+} from "@workspace/hardhat/script";
 
 const coder = AbiCoder.defaultAbiCoder();
 

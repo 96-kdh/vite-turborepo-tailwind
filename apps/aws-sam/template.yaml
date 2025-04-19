@@ -8,31 +8,16 @@ Globals:
     Timeout: 3
 
 Resources:
-  #  EventQueue:
-  #    Type: AWS::SQS::Queue
-  #    Properties:
-  #      QueueName: eventQueue.fifo
-  #      VisibilityTimeout: 30
-  #      DelaySeconds: 0
-  #      ReceiveMessageWaitTimeSeconds: 20
-  #      FifoQueue: true
-  #      ContentBasedDeduplication: true
-
-  ErrorTable:
-    Type: AWS::DynamoDB::Table
+  EventQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      AttributeDefinitions:
-        - AttributeName: functionName
-          AttributeType: S
-        - AttributeName: createdAtIndex
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: functionName
-          KeyType: HASH
-        - AttributeName: createdAtIndex
-          KeyType: RANGE
-      TableName: !Sub "Error"
+      QueueName: eventQueue.fifo
+      VisibilityTimeout: 30
+      DelaySeconds: 0
+      ReceiveMessageWaitTimeSeconds: 20
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
   OrderTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -152,102 +137,87 @@ Resources:
 
 
 
-#  Api:
-#    Type: AWS::Serverless::Api
-#    Properties:
-#      Name: !Sub
-#        - ${ResourceName} From Stack ${AWS::StackName}
-#        - ResourceName: EventWebHookAPI
-#      StageName: "StageN"
-#      EndpointConfiguration: REGIONAL
-#      # TracingEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
-#      Cors:
-#        AllowMethods: "'GET, OPTIONS, POST, DELETE, PUT, PATCH'"
-#        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-#        AllowOrigin: "'*'"
-#        MaxAge: "'500'"
-#      Auth:
-#        ApiKeyRequired: true # 각 연결된 람다에서 require key 속성을 false 로 변경해야함
-#        AddDefaultAuthorizerToCorsPreflight: false
-#        AddApiKeyRequiredToCorsPreflight: false # api key 추가하고 해당 속성 때문에 하루종일 날렸음 (포스트맨에서는 정상, web 브라우저에서는 Preflight 때문에 헤더에 key 가 빠져있는 상태때문에 cors, 403 error 처럼 리턴)
-#      CacheClusterEnabled: true
-#      CacheClusterSize: "0.5"
-#  ApiKey:
-#    Type: AWS::ApiGateway::ApiKey
-#    Properties:
-#      Enabled: true
-#  UsagePlanNoLimit:
-#    Type: AWS::ApiGateway::UsagePlan
-#    Properties:
-#      ApiStages:
-#        - ApiId: !Ref Api
-#          Stage: "StageN"
-#  UsagePlanMapReporting:
-#    Type: AWS::ApiGateway::UsagePlanKey
-#    Properties:
-#      KeyId: !Ref ApiKey
-#      KeyType: API_KEY
-#      UsagePlanId: !Ref UsagePlanNoLimit
-#
-#
-#  EventProducerFunction:
-#    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-#    Properties:
-#      CodeUri: app/
-#      Handler: app.eventProducer
-#      Runtime: nodejs20.x
-#      Architectures:
-#        - x86_64
-#      Events:
-#        API:
-#          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-#          Properties:
-#            Path: /event
-#            Method: post
-#            RestApiId: !Ref Api
-#            Auth:
-#              ApiKeyRequired: false
-#      Environment:
-#        Variables:
-#          NODE_ENV: prod
-#    Metadata: # Manage esbuild properties
-#      BuildMethod: esbuild
-#      BuildProperties:
-#        Minify: true
-#        Target: "es2020"
-#        Sourcemap: true
-#        EntryPoints:
-#        - app.ts
-#  EventConsumerFunction:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      CodeUri: app/
-#      Handler: app.eventConsumer
-#      Runtime: nodejs18.x
-#      Architectures:
-#        - x86_64
-#      Timeout: 30
-#      MemorySize: 1024
-#      Events:
-#        SQSQueueEvent:
-#          Type: SQS
-#          Properties:
-#            Queue: !GetAtt EventQueue.Arn
-#            BatchSize: 10
-#            Enabled: true
-#      Environment:
-#        Variables:
-#          NODE_ENV: prod
-#      Policies:
-#        - SQSPollerPolicy:
-#            QueueName: EventQueue.fifo
-#    Metadata: # Manage esbuild properties
-#      BuildMethod: esbuild
-#      BuildProperties:
-#        Minify: true
-#        Target: "es2020"
-#        EntryPoints:
-#          - app.ts
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: EventWebHookAPI
+      StageName: "StageN"
+      EndpointConfiguration: REGIONAL
+      # TracingEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
+      Cors:
+        AllowMethods: "'GET, OPTIONS, POST, DELETE, PUT, PATCH'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+        MaxAge: "'500'"
+      Auth:
+        ApiKeyRequired: true # 각 연결된 람다에서 require key 속성을 false 로 변경해야함
+        AddDefaultAuthorizerToCorsPreflight: false
+        AddApiKeyRequiredToCorsPreflight: false # api key 추가하고 해당 속성 때문에 하루종일 날렸음 (포스트맨에서는 정상, web 브라우저에서는 Preflight 때문에 헤더에 key 가 빠져있는 상태때문에 cors, 403 error 처럼 리턴)
+      CacheClusterEnabled: true
+      CacheClusterSize: "0.5"
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Enabled: true
+  UsagePlanNoLimit:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId: !Ref Api
+          Stage: "StageN"
+  UsagePlanMapReporting:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref UsagePlanNoLimit
+
+
+  EventProducerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: app/dist
+      Handler: app.eventProducer
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Events:
+        API:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /event
+            Method: post
+            RestApiId: !Ref Api
+            Auth:
+              ApiKeyRequired: false
+      Environment:
+        Variables:
+          NODE_ENV: prod
+  EventConsumerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/dist
+      Handler: app.eventConsumer
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Timeout: 30
+      MemorySize: 1024
+      Events:
+        SQSQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventQueue.Arn
+            BatchSize: 10
+            Enabled: true
+      Environment:
+        Variables:
+          NODE_ENV: prod
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: EventQueue.fifo
 
 
 #  # Lambda 함수 (확장된 Resolver 로직 구현, 컴파일된 TypeScript 코드)

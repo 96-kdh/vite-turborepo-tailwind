@@ -1,27 +1,25 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { APIGatewayProxyEvent } from "aws-lambda";
 import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
 
-import { CustomResponse, division, sqsClient } from "../utils";
+import { CustomResponse, division, sqsClient } from "utils";
 import {
    AlchemyWebhookPayload,
    NetworkToChainId,
    SqsEventMessageBody,
    SupportedEventSig,
-} from "../../../../packages/hardhat/script";
-// @추후작업 vendor 로 포팅하는 방식을 더 깔끔한 방식으로 바꾸거나, 불필요한 부분까지 복제되는걸 막는 등 작업
+} from "@workspace/hardhat/script";
 
 // sam local invoke EventProducerFunction --event events/EventProducerFunction.json --env-vars env.local.json
-export const eventProducer = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-   console.log("in true, ... ", event.body);
+export const eventProducer = async (event: APIGatewayProxyEvent) => {
+   console.log("eventProducer process.env.NODE_ENV: ", process.env.NODE_ENV);
+
    try {
       if (typeof event.body !== "string") throw new Error("The event body must be a string");
-
-      console.log("eventProducer process.env.NODE_ENV: ", process.env.NODE_ENV);
-      console.log("eventProducer sqsClient.config.endpoint: ", sqsClient.config.endpoint?.toString());
 
       const promiseTask = [];
 
       const eventBody: AlchemyWebhookPayload = JSON.parse(event.body);
+
       const batchEntries = [];
       let batchId = 0;
 

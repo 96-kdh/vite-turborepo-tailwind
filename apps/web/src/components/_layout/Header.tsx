@@ -34,7 +34,7 @@ const AppHeader = () => {
    };
 
    return (
-      <header className="flex h-16 w-full items-center justify-between bg-white px-4 shadow dark:bg-gray-950">
+      <header className="dark:bg-sidebar flex h-16 w-full items-center justify-between bg-white px-4 shadow">
          {/* 왼쪽: 사이드 네비게이션 토글 아이콘 */}
          <button onClick={toggleSidebar} className="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
             <Menu className="h-6 w-6" />

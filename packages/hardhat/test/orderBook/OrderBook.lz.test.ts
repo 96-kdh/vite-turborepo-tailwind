@@ -8,6 +8,7 @@ import {
    MessagingFeeStructOutput,
 } from "../../typechain-types/contracts/orderBook/OrderBook.lz.sol/OrderBookWithLz";
 import OrderStructOutput = IOrderBook.OrderStructOutput;
+import { encodePayloadOrderBook } from "../../script";
 
 // -------------------------------------------------------------------
 // Test Flows
@@ -149,7 +150,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
    }
 
    // Get our payload encoding functions.
-   const { CreateOrder, executeOrder, claim, canceled } = encodePayloadViem();
+   const { createOrder, executeOrder, claim, canceled } = encodePayloadOrderBook();
 
    // -------------------------------------------------------------------
    // Flow 1: createOrder -> executeOrder -> claim
@@ -162,7 +163,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
          const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
 
          // 1. Create Order on Chain A
-         const createPayload = CreateOrder({
+         const createPayload = createOrder({
             orderId: 0n,
             sender: ownerA.account.address,
             srcEid: eidA,
@@ -264,7 +265,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
          const desiredAmount = parseEther("2");
          const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
 
-         const createPayload = CreateOrder({
+         const createPayload = createOrder({
             orderId: 0n,
             sender: ownerA.account.address,
             srcEid: eidA,
@@ -314,7 +315,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
          const desiredAmount = parseEther("2");
          const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
 
-         const createPayload = CreateOrder({
+         const createPayload = createOrder({
             orderId: 0n,
             sender: ownerA.account.address,
             srcEid: eidA,
@@ -387,7 +388,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
          const desiredAmount = parseEther("2");
          const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
 
-         const createPayload = CreateOrder({
+         const createPayload = createOrder({
             orderId: 0n,
             sender: ownerA.account.address,
             srcEid: eidA,
@@ -453,7 +454,7 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
          const desiredAmount = parseEther("2");
          const options = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString();
 
-         const createPayload = CreateOrder({
+         const createPayload = createOrder({
             orderId: 0n,
             sender: ownerA.account.address,
             srcEid: eidA,
@@ -499,99 +500,3 @@ describe("OrderBookWithLz - Cross-Chain Order Book", function () {
       });
    });
 });
-
-// -------------------------------------------------------------------
-// Payload Encoding Helpers
-// -------------------------------------------------------------------
-function encodePayloadViem() {
-   const CreateOrder = ({
-      orderId,
-      sender,
-      srcEid,
-      depositAmount,
-      dstEid,
-      desiredAmount,
-   }: {
-      orderId: bigint;
-      sender: `0x${string}`;
-      srcEid: number;
-      depositAmount: bigint;
-      dstEid: number;
-      desiredAmount: bigint;
-   }): string => {
-      const functionSelector = keccak256(toHex("CreateOrder")).slice(0, 10);
-      const encodedData = encodeAbiParameters(
-         [
-            { type: "uint256" },
-            { type: "address" },
-            { type: "uint32" },
-            { type: "uint256" },
-            { type: "uint32" },
-            { type: "uint256" },
-         ],
-         [orderId, sender, srcEid, depositAmount, dstEid, desiredAmount],
-      );
-      return functionSelector + encodedData.slice(2);
-   };
-
-   const executeOrder = ({
-      orderId,
-      sender,
-      srcEid,
-      paymentAmount,
-      dstEid,
-      desiredAmount,
-      timelock,
-   }: {
-      orderId: bigint;
-      sender: `0x${string}`;
-      srcEid: number;
-      paymentAmount: bigint;
-      dstEid: number;
-      desiredAmount: bigint;
-      timelock: bigint;
-   }): string => {
-      const functionSelector = keccak256(toHex("executeOrder")).slice(0, 10);
-      const encodedData = encodeAbiParameters(
-         [
-            { type: "uint256" },
-            { type: "address" },
-            { type: "uint32" },
-            { type: "uint256" },
-            { type: "uint32" },
-            { type: "uint256" },
-            { type: "uint256" },
-         ],
-         [orderId, sender, srcEid, paymentAmount, dstEid, desiredAmount, timelock],
-      );
-      return functionSelector + encodedData.slice(2);
-   };
-
-   const claim = ({ orderId, sender, srcEid }: { orderId: bigint; sender: `0x${string}`; srcEid: number }): string => {
-      const functionSelector = keccak256(toHex("claim")).slice(0, 10);
-      const encodedData = encodeAbiParameters(
-         [{ type: "uint256" }, { type: "address" }, { type: "uint32" }],
-         [orderId, sender, srcEid],
-      );
-      return functionSelector + encodedData.slice(2);
-   };
-
-   const canceled = ({
-      orderId,
-      sender,
-      srcEid,
-   }: {
-      orderId: bigint;
-      sender: `0x${string}`;
-      srcEid: number;
-   }): string => {
-      const functionSelector = keccak256(toHex("canceled")).slice(0, 10);
-      const encodedData = encodeAbiParameters(
-         [{ type: "uint256" }, { type: "address" }, { type: "uint32" }],
-         [orderId, sender, srcEid],
-      );
-      return functionSelector + encodedData.slice(2);
-   };
-
-   return { CreateOrder, executeOrder, claim, canceled };
-}

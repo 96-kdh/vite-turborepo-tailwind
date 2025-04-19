@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-contract IOrderBook {
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+
+interface IOrderBook {
     enum OrderStatus {
         no,
         createOrder,
@@ -22,6 +24,13 @@ contract IOrderBook {
         OrderStatus status;
     }
 
+    function getOrder(uint256 _orderId) external view returns (Order memory);
+    function getOrder(uint256 _orderId, uint32 _dstEid) external view returns (Order memory);
+    function createOrder(uint32 _dstEid, uint256 _depositAmount, uint256 _desiredAmount, bytes calldata _options) external payable;
+    function cancelOrder(uint256 _orderId, uint32 _dstEid, bytes calldata _options) external payable;
+    function executeOrder(uint256 _orderId, uint32 _dstEid, uint256 _paymentAmount, uint256 _desiredAmount, bytes calldata _options) external payable;
+    function claim(uint256 _orderId, uint32 _dstEid, bytes calldata _options) external payable;
+    function quote(uint32 _dstEid, bytes memory _payload, bytes memory _options, bool _payInLzToken) external view returns (MessagingFee memory fee);
 
     event CreateSrcOrder(uint256 indexed orderId, address indexed maker, uint256 depositAmount, uint256 desiredAmount, uint32 dstEid);
     event UpdateSrcOrder(uint256 indexed orderId, address indexed maker, address indexed taker, uint256 depositAmount, uint256 desiredAmount, OrderStatus orderStatus, uint32 dstEid);

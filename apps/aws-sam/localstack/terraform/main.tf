@@ -124,29 +124,6 @@ resource "aws_dynamodb_table" "Order" {
   }
 }
 
-/**
-Error
-  functionName (pk)
-  createdAtIndex (sort key)
-  errorMsg
-  task
- */
-resource "aws_dynamodb_table" "Error" {
-  name         = "Error"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "functionName"
-  range_key    = "createdAtIndex"
-
-  attribute {
-    name = "functionName"
-    type = "S"
-  }
-  attribute {
-    name = "createdAtIndex"
-    type = "S"
-  }
-}
-
 resource "aws_sqs_queue" "eventQueue" {
   name = "eventQueue.fifo"
   delay_seconds = 0 // default 0
@@ -154,20 +131,6 @@ resource "aws_sqs_queue" "eventQueue" {
   visibility_timeout_seconds = 20 // default 30
   fifo_queue = true
   content_based_deduplication = true
-}
-
-resource "aws_lambda_function" "eventProducer" {
-  function_name = "EventProducerFunction"
-  filename      = "/dist/eventProducer.zip"
-  handler       = "app.eventProducer"
-  runtime       = "nodejs20.x"
-  role          = "arn:aws:iam::000000000000:role/lambda-exec-role"
-
-  environment {
-    variables = {
-      NODE_ENV = "dev"
-    }
-  }
 }
 
 resource "aws_lambda_function" "eventConsumer" {
@@ -189,44 +152,4 @@ resource "aws_lambda_event_source_mapping" "eventConsumerSqsTrigger" {
   function_name    = aws_lambda_function.eventConsumer.arn
   batch_size       = 10
   enabled          = true
-}
-
-resource "aws_api_gateway_rest_api" "example" {
-  name = "example-api"
-}
-
-resource "aws_api_gateway_resource" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.example.id
-  parent_id   = aws_api_gateway_rest_api.example.root_resource_id
-  path_part   = "event"
-}
-
-resource "aws_api_gateway_method" "post" {
-  rest_api_id   = aws_api_gateway_rest_api.example.id
-  resource_id   = aws_api_gateway_resource.proxy.id
-  http_method   = "POST"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "lambda" {
-  rest_api_id             = aws_api_gateway_rest_api.example.id
-  resource_id             = aws_api_gateway_resource.proxy.id
-  http_method             = aws_api_gateway_method.post.http_method
-  integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.eventProducer.invoke_arn
-}
-
-resource "aws_api_gateway_deployment" "example" {
-  rest_api_id = aws_api_gateway_rest_api.example.id
-  depends_on = [
-    aws_api_gateway_integration.lambda,
-    aws_api_gateway_method.post  # 이 줄 추가 권장
-  ]
-}
-
-resource "aws_api_gateway_stage" "example" {
-  deployment_id = aws_api_gateway_deployment.example.id
-  rest_api_id   = aws_api_gateway_rest_api.example.id
-  stage_name    = "dev"
 }

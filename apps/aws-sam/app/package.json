@@ -3,10 +3,9 @@
    "version": "1.0.0",
    "license": "MIT",
    "scripts": {
-      "dev": "nodemon ./graphql/local-server.js",
-      "install:vendor": "mkdir -p ./vendor/@workspace/hardhat/script && cp -R ../../../packages/hardhat/script/* ./vendor/@workspace/hardhat/script",
-      "run:lambda": "cd .. && sam local start-lambda --env-vars env.local.json && cd app",
-      "build": "tsc && esbuild app.ts --bundle --platform=node --target=es2020 --outfile=dist/app.js && cd dist && zip eventProducer.zip app.js node_modules -r && zip eventConsumer.zip app.js node_modules -r",
+      "dev": "concurrently -k -n graphql,api -c green,cyan \"nodemon ./graphql/local-server.js\" \"npm run run:api\"",
+      "run:api": "cd .. && sam local start-api --env-vars env.local.json && cd app",
+      "build": "tsc && esbuild app.ts --bundle --platform=node --target=es2020 --outfile=dist/app.js",
       "test": "npm run compile && npm run unit",
       "test:resolvers": "./graphql/resolvers/test-resolvers.sh"
    },
@@ -30,6 +29,7 @@
       "@types/jest": "^29.2.0",
       "@types/node": "^20.5.7",
       "apollo-server": "^3.13.0",
+      "concurrently": "^9.1.2",
       "jest": "^29.2.1",
       "nodemon": "^3.1.9",
       "ts-jest": "^29.0.5",
