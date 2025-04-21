@@ -171,8 +171,26 @@ contract EndpointV2MockCustom is ILayerZeroEndpointV2, MessagingContext {
         messageQueue.push(dm);
     }
 
-    function lastQueueMessage() external view returns (DelayedMessage memory) {
-        return messageQueue[messageQueue.length - 1];
+    /// @notice startIndex 부터 endIndex(포함)까지 messageQueue 항목을 리턴합니다.
+    /// @dev 범위를 벗어나거나 startIndex > endIndex 인 경우 빈 배열을 리턴합니다.
+    function getQueueMessages(
+        uint256 _startIndex,
+        uint256 _endIndex
+    ) external view returns (DelayedMessage[] memory) {
+        uint256 len = messageQueue.length;
+
+        if (_startIndex >= len || _startIndex > _endIndex) {
+            return new DelayedMessage[](0);
+        }
+
+        if (_endIndex > len) _endIndex = len;
+
+        uint256 count = _endIndex - _startIndex + 1;
+        DelayedMessage[] memory slice = new DelayedMessage[](count);
+        for (uint256 i = 0; i < count; i++) {
+            slice[i] = messageQueue[_startIndex + i];
+        }
+        return slice;
     }
 
     function receivePayload(

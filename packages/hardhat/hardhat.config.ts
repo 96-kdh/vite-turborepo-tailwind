@@ -4,6 +4,7 @@ import { SolcConfig } from "hardhat/types";
 import "@nomicfoundation/hardhat-toolbox-viem";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
+import "@nomicfoundation/hardhat-viem";
 
 import "./script/task";
 import { JsonRPC, SupportChainIds } from "./script";

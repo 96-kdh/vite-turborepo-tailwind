@@ -8,7 +8,7 @@ import { OApp, MessagingFee, Origin } from "@layerzerolabs/oapp-evm/contracts/oa
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
 
-contract IOrderBook {
+contract IOrderBookDrafts {
     struct Order {
         address payable maker;      // The party that locked funds.
         address payable taker;      // Set when the taker executes the swap.
@@ -33,7 +33,7 @@ contract IOrderBook {
     );
 }
 
-contract OrderBookDrafts is IOrderBook, OApp, OAppOptionsType3 {
+contract OrderBookDrafts is IOrderBookDrafts, OApp, OAppOptionsType3 {
     uint32 public srcEid;
 
     uint256 public orderId;

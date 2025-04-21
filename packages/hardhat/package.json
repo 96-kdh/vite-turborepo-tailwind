@@ -4,9 +4,9 @@
    "main": "./script/index.ts",
    "types": "./script/index.ts",
    "scripts": {
-      "dev": "npx hardhat compile && npx hardhat dev",
+      "dev": "npx hardhat compile && npx wagmi generate && npx hardhat dev",
       "test": "npx hardhat test",
-      "compile": "npx hardhat compile"
+      "compile": "npx hardhat compile && npx wagmi generate"
    },
    "devDependencies": {
       "@aws-sdk/client-lambda": "^3.774.0",
@@ -23,12 +23,12 @@
       "@nomiclabs/hardhat-ethers": "^2.2.3",
       "@openzeppelin/contracts": "^5.0.2",
       "@openzeppelin/contracts-upgradeable": "^5.0.2",
-      "@workspace/eslint-config": "workspace:^",
-      "@workspace/typescript-config": "workspace:^",
       "@typechain/hardhat": "^9.1.0",
       "@types/chai": "^4.3.11",
       "@types/readline-sync": "^1.4.8",
       "@types/ws": "^8.5.14",
+      "@wagmi/cli": "^2.2.1",
+      "@workspace/typescript-config": "workspace:^",
       "chai": "^4.4.1",
       "ethers": "^6.13.5",
       "hardhat": "^2.22.19",

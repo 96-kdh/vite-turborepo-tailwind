@@ -10,7 +10,8 @@
     "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "types": ["vite/client"]
   },
   "exclude": ["node_modules"]
 }

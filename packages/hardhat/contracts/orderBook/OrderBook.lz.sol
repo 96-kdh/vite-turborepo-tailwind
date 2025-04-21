@@ -212,6 +212,7 @@ contract OrderBookWithLz is IOrderBook, OApp, OAppOptionsType3 {
             Order storage order = srcOrder[_orderId];
 
             require(order.maker != address(0), "order does not exist");
+            require(_taker != address(0), "_taker must not be zero address");
             require(_srcEid == srcEid, "invalid src endpoint id, with payload");
             require(_origin.srcEid == _dstEid, "invalid src endpoint id, with payload");
             require(order.status == OrderStatus.createOrder, "src order status must be 1(OrderStatus.createOrder)");

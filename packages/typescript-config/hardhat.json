@@ -1,7 +1,9 @@
 {
+  "extends": "./base.json",
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
+    "moduleResolution": "node10",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

@@ -1,8 +1,9 @@
 import { Options } from "@layerzerolabs/lz-v2-utilities";
-import { encodeAbiParameters, keccak256, toHex } from "viem";
+import { encodeAbiParameters, keccak256, toHex, zeroAddress } from "viem";
+import { ChainIdToEndpointId } from "../constants";
 
-export const lzReceiveOption = (GAS_LIMIT: bigint, MSG_VALUE: bigint = 0n) => {
-   return Options.newOptions().addExecutorLzReceiveOption(GAS_LIMIT, MSG_VALUE).toHex().toString();
+export const lzReceiveOption = (GAS_LIMIT: bigint, MSG_VALUE: bigint = 0n): `0x${string}` => {
+   return Options.newOptions().addExecutorLzReceiveOption(GAS_LIMIT, MSG_VALUE).toHex().toString() as `0x${string}`;
 };
 
 export function encodePayloadOrderBook() {
@@ -20,7 +21,7 @@ export function encodePayloadOrderBook() {
       depositAmount: bigint;
       dstEid: number;
       desiredAmount: bigint;
-   }): string => {
+   }): `0x${string}` => {
       const functionSelector = keccak256(toHex("CreateOrder")).slice(0, 10);
       const encodedData = encodeAbiParameters(
          [
@@ -33,7 +34,18 @@ export function encodePayloadOrderBook() {
          ],
          [orderId, sender, srcEid, depositAmount, dstEid, desiredAmount],
       );
-      return functionSelector + encodedData.slice(2);
+      return (functionSelector + encodedData.slice(2)) as `0x${string}`;
+   };
+
+   const createOrderMockData = (srcEid: number, dstEid: number) => {
+      return {
+         orderId: 1n,
+         sender: zeroAddress,
+         srcEid,
+         depositAmount: 1n,
+         dstEid,
+         desiredAmount: 1n,
+      };
    };
 
    const executeOrder = ({
@@ -52,7 +64,7 @@ export function encodePayloadOrderBook() {
       dstEid: number;
       desiredAmount: bigint;
       timelock: bigint;
-   }): string => {
+   }): `0x${string}` => {
       const functionSelector = keccak256(toHex("executeOrder")).slice(0, 10);
       const encodedData = encodeAbiParameters(
          [
@@ -66,16 +78,24 @@ export function encodePayloadOrderBook() {
          ],
          [orderId, sender, srcEid, paymentAmount, dstEid, desiredAmount, timelock],
       );
-      return functionSelector + encodedData.slice(2);
+      return (functionSelector + encodedData.slice(2)) as `0x${string}`;
    };
 
-   const claim = ({ orderId, sender, srcEid }: { orderId: bigint; sender: `0x${string}`; srcEid: number }): string => {
+   const claim = ({
+      orderId,
+      sender,
+      srcEid,
+   }: {
+      orderId: bigint;
+      sender: `0x${string}`;
+      srcEid: number;
+   }): `0x${string}` => {
       const functionSelector = keccak256(toHex("claim")).slice(0, 10);
       const encodedData = encodeAbiParameters(
          [{ type: "uint256" }, { type: "address" }, { type: "uint32" }],
          [orderId, sender, srcEid],
       );
-      return functionSelector + encodedData.slice(2);
+      return (functionSelector + encodedData.slice(2)) as `0x${string}`;
    };
 
    const canceled = ({
@@ -86,14 +106,14 @@ export function encodePayloadOrderBook() {
       orderId: bigint;
       sender: `0x${string}`;
       srcEid: number;
-   }): string => {
+   }): `0x${string}` => {
       const functionSelector = keccak256(toHex("canceled")).slice(0, 10);
       const encodedData = encodeAbiParameters(
          [{ type: "uint256" }, { type: "address" }, { type: "uint32" }],
          [orderId, sender, srcEid],
       );
-      return functionSelector + encodedData.slice(2);
+      return (functionSelector + encodedData.slice(2)) as `0x${string}`;
    };
 
-   return { createOrder, executeOrder, claim, canceled };
+   return { createOrder, executeOrder, claim, canceled, createOrderMockData };
 }

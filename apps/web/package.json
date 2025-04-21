@@ -4,8 +4,8 @@
    "version": "0.0.0",
    "type": "module",
    "scripts": {
-      "dev": "vite --clearScreen false",
-      "build:dev": "tsc && vite build",
+      "dev": "cross-env VITE_NODE_ENV=local vite --clearScreen false",
+      "build": "tsc && vite build",
       "preview": "vite preview",
       "lint": "eslint \"src/**/*.ts\""
    },
@@ -32,10 +32,10 @@
       "@types/react": "^19.0.1",
       "@types/react-dom": "^19.0.2",
       "@vitejs/plugin-react": "^3.1.0",
-      "@workspace/eslint-config": "workspace:^",
       "@workspace/hardhat": "workspace:^",
       "@workspace/typescript-config": "workspace:^",
       "@workspace/ui": "workspace:^",
+      "cross-env": "^7.0.3",
       "eslint": "^8.57.0",
       "graphql-request": "^7.1.2",
       "lucide-react": "^0.475.0",

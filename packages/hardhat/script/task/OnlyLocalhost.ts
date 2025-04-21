@@ -1,7 +1,6 @@
 import { task } from "hardhat/config";
 import { spawnSync } from "child_process";
 import { ethers } from "ethers";
-import { InvokeCommand, InvokeCommandInput, LambdaClient } from "@aws-sdk/client-lambda";
 import { Chain, createPublicClient, http, isAddress, TransactionReceipt, TransactionType, zeroAddress } from "viem";
 import * as fs from "fs";
 import * as path from "path";
@@ -9,7 +8,7 @@ import pc from "picocolors";
 import { getTransactionReceipt } from "viem/actions";
 
 import { AlchemyWebhookPayload } from "../types";
-import { contractAddresses, JsonRPC, SupportChainIds, SupportedEventSig } from "../constants";
+import { contractAddresses, endpointV2MockCustomAbi, JsonRPC, SupportChainIds, SupportedEventSig } from "../constants";
 import { Task } from "./types";
 import { beforeTaskAction } from "./utils";
 
@@ -148,6 +147,33 @@ task(Task.dev, "override npx hardhat node task").setAction(async (taskArgs, hre)
             },
          );
       })();
+
+      const hardhatRelayer = () => {
+         // npx hardhat receivePayload --network localhost --dstchainid 31338 --autoapprove true
+         spawnSync(
+            "npx",
+            [
+               "hardhat",
+               "receivePayload",
+               "--network",
+               chainId === SupportChainIds.LOCALHOST ? "localhost" : "localhost_copy",
+               "--dstchainid",
+               chainId === SupportChainIds.LOCALHOST
+                  ? String(SupportChainIds.LOCALHOST_COPY)
+                  : String(SupportChainIds.LOCALHOST),
+               "--autoapprove",
+               "true",
+            ],
+            {
+               stdio: "inherit",
+               shell: true,
+            },
+         );
+
+         setTimeout(hardhatRelayer, 1000 * 5);
+      };
+
+      setTimeout(hardhatRelayer, 1000 * 10);
    }
 
    // task 종료 후 프로세스가 종료되지 않도록 무한 대기
@@ -169,11 +195,12 @@ task(Task.mining, "run hardhat node mining")
       await hre.network.provider.send("evm_setIntervalMining", [Number(interval)]);
    });
 
-// npx hardhat receivePayload --network localhost --dstchainid 31338
+// npx hardhat receivePayload --network localhost --dstchainid 31338 --autoapprove true
 task(Task.receivePayload, "run Receive Payload (for layerZero endpoint mock contract)")
    .addParam("dstchainid", "dst chainId")
-   .setAction(async ({ dstchainid }, hre) =>
-      beforeTaskAction({ dstchainid }, hre, async () => {
+   .addOptionalParam("autoapprove", "auto-approve", "false")
+   .setAction(async ({ dstchainid, autoapprove }, hre) =>
+      beforeTaskAction({ dstchainid, autoapprove }, hre, async () => {
          if (
             hre.network.config.chainId !== SupportChainIds.LOCALHOST &&
             hre.network.config.chainId !== SupportChainIds.LOCALHOST_COPY
@@ -198,43 +225,62 @@ task(Task.receivePayload, "run Receive Payload (for layerZero endpoint mock cont
             transport: http(JsonRPC[Number(dstchainid) as SupportChainIds]),
          });
 
-         const { origin, endpoint, receiver, payloadHash, message, gas, msgValue, guid } =
-            (await dstClient.readContract({
-               address: contractAddresses[Number(dstchainid) as SupportChainIds].EndpointV2Mock,
-               abi: srcEndpointV2Mock.abi,
-               functionName: "lastQueueMessage",
-            })) as {
-               origin: {
-                  srcEid: number;
-                  sender: string;
-                  nonce: bigint;
-               };
-               endpoint: string;
-               receiver: string;
-               payloadHash: string;
-               message: string;
-               gas: bigint;
-               msgValue: bigint;
-               guid: string;
-            };
+         const queueMessages = await dstClient.readContract({
+            address: contractAddresses[Number(dstchainid) as SupportChainIds].EndpointV2Mock,
+            abi: endpointV2MockCustomAbi,
+            functionName: "getQueueMessages",
+            args: [0n, 0n],
+         });
 
-         const txHash = await srcEndpointV2Mock.write.receivePayload([
-            origin,
-            receiver,
-            payloadHash,
-            message,
-            gas,
-            msgValue,
-            guid,
-         ]);
+         if (queueMessages.length === 0) {
+            console.log("queueMessages.length is zero, exit;");
+            return;
+         }
+
+         const sendTransactionTask = [];
+
+         for (const queueMessage of queueMessages) {
+            const { origin, endpoint, receiver, payloadHash, message, gas, msgValue, guid } = queueMessage;
+            sendTransactionTask.push(
+               new Promise((resolve) =>
+                  resolve(
+                     srcEndpointV2Mock.write.receivePayload([
+                        origin,
+                        receiver,
+                        payloadHash,
+                        message,
+                        gas,
+                        msgValue,
+                        guid,
+                     ]),
+                  ),
+               ),
+            );
+         }
+
+         const results = await Promise.allSettled(sendTransactionTask);
 
          if (chainId === SupportChainIds.LOCALHOST || chainId === SupportChainIds.LOCALHOST_COPY) {
             const client = await hre.viem.getPublicClient();
-            const receipt = await getTransactionReceipt(client, {
-               hash: txHash,
-            });
+            const sendEventToLocalHostTask = [];
 
-            await sendEventToLocalhost(chainId, receipt);
+            for (const result of results) {
+               if (result.status === "fulfilled") {
+                  const txHash = result.value as `0x${string}`;
+
+                  sendEventToLocalHostTask.push(
+                     new Promise((resolve) =>
+                        resolve(async () => {
+                           const receipt = await getTransactionReceipt(client, {
+                              hash: txHash,
+                           });
+
+                           await sendEventToLocalhost(chainId, receipt);
+                        }),
+                     ),
+                  );
+               }
+            }
          }
       }),
    );
@@ -269,11 +315,6 @@ export async function sendEventToLocalhost(
       return;
    }
 
-   const config = {
-      region: "us-east-1", // 로컬 테스트 시 유효한 리전을 지정 (예: us-east-1)
-      endpoint: "http://127.0.0.1:3001", // 로컬 Lambda 엔드포인트
-   };
-   const client = new LambdaClient(config);
    const promiseTask = [];
 
    const supportedEventSigs = Object.values(SupportedEventSig());
@@ -325,15 +366,16 @@ export async function sendEventToLocalhost(
          },
       };
 
-      const input: InvokeCommandInput = {
-         FunctionName: "EventProducerFunction",
-         Payload: JSON.stringify({
-            body: JSON.stringify(data),
-         }),
-      };
-      const command = new InvokeCommand(input);
-
-      promiseTask.push(new Promise((resolve) => resolve(client.send(command))));
+      promiseTask.push(
+         new Promise((resolve) =>
+            resolve(
+               fetch("http://localhost:3000/event", {
+                  method: "POST",
+                  body: JSON.stringify(data),
+               }),
+            ),
+         ),
+      );
    }
 
    console.log("promiseTask length: ", promiseTask.length);

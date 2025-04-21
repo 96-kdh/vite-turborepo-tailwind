@@ -55,14 +55,14 @@ task(Task.createOrder, "createOrder")
             },
          );
 
-         if (chainId === SupportChainIds.LOCALHOST || chainId === SupportChainIds.LOCALHOST_COPY) {
-            const client = await hre.viem.getPublicClient();
-            const receipt = await getTransactionReceipt(client, {
-               hash: txHash,
-            });
-
-            await sendEventToLocalhost(chainId, receipt);
-         }
+         // if (chainId === SupportChainIds.LOCALHOST || chainId === SupportChainIds.LOCALHOST_COPY) {
+         //    const client = await hre.viem.getPublicClient();
+         //    const receipt = await getTransactionReceipt(client, {
+         //       hash: txHash,
+         //    });
+         //
+         //    await sendEventToLocalhost(chainId, receipt);
+         // }
       }),
    );
 

@@ -5,7 +5,7 @@
    "scripts": {
       "dev": "concurrently -k -n graphql,api -c green,cyan \"nodemon ./graphql/local-server.js\" \"npm run run:api\"",
       "run:api": "cd .. && sam local start-api --env-vars env.local.json && cd app",
-      "build": "tsc && esbuild app.ts --bundle --platform=node --target=es2020 --outfile=dist/app.js",
+      "build": "tsc && esbuild app.ts --bundle --platform=node --target=es2020 --outfile=dist/app.js && cd dist && zip eventProducer.zip app.js node_modules -r && zip eventConsumer.zip app.js node_modules -r",
       "test": "npm run compile && npm run unit",
       "test:resolvers": "./graphql/resolvers/test-resolvers.sh"
    },
@@ -14,7 +14,6 @@
       "@aws-sdk/client-dynamodb": "^3.767.0",
       "@aws-sdk/client-sqs": "^3.758.0",
       "@aws-sdk/lib-dynamodb": "^3.767.0",
-      "@workspace/eslint-config": "file:../../../packages/eslint-config",
       "@workspace/hardhat": "file:../../../packages/hardhat",
       "@workspace/typescript-config": "file:../../../packages/typescript-config",
       "alchemy-sdk": "^3.5.6",
