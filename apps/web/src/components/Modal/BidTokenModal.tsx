@@ -1,22 +1,21 @@
-import { useAppKit, useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppKitNetwork } from "@reown/appkit/networks";
-import { formatUnits, parseUnits, getContract } from "viem";
-import { useWriteContract } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
-
-import useMissingFieldHighlight from "@/hooks/useMissingFieldHighlight";
-import { networks, publicClients } from "@/lib";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { formatUnits, getContract, parseUnits } from "viem";
+import { useWriteContract } from "wagmi";
 
 import {
    ChainIdToEndpointId,
-   contractAddresses,
    ContractNames,
+   SupportChainIds,
+   contractAddresses,
    encodePayloadOrderBook,
    lzReceiveOption,
-   SupportChainIds,
    orderBookWithLzAbi,
 } from "@workspace/hardhat";
+import { Button } from "@workspace/ui/components/shadcn-ui/button";
+import { Card, CardContent } from "@workspace/ui/components/shadcn-ui/card";
 import {
    Dialog,
    DialogContent,
@@ -25,6 +24,7 @@ import {
    DialogTitle,
    DialogTrigger,
 } from "@workspace/ui/components/shadcn-ui/dialog";
+import { Input } from "@workspace/ui/components/shadcn-ui/input";
 import {
    Select,
    SelectContent,
@@ -32,18 +32,21 @@ import {
    SelectTrigger,
    SelectValue,
 } from "@workspace/ui/components/shadcn-ui/select";
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@workspace/ui/components/shadcn-ui/tooltip";
-import { Card, CardContent } from "@workspace/ui/components/shadcn-ui/card";
-import { Button } from "@workspace/ui/components/shadcn-ui/button";
 import { toast } from "@workspace/ui/components/shadcn-ui/sonner";
-import { Input } from "@workspace/ui/components/shadcn-ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@workspace/ui/components/shadcn-ui/tooltip";
+
+import { useAppKitWrap } from "@/hooks/useAppKitWrap";
+import useMissingFieldHighlight, {
+   injectionClassName,
+   injectionMissingClassName,
+} from "@/hooks/useMissingFieldHighlight";
+import { networks, publicClients } from "@/lib";
 
 export const BidTokenModal: React.FC = () => {
-   const { chainId, switchNetwork } = useAppKitNetwork();
-   const { address, isConnected } = useAppKitAccount();
-   const { open } = useAppKit();
-
+   const { chainId, switchNetwork, address, isConnected, open, balance } = useAppKitWrap();
    const { writeContract } = useWriteContract();
+   const queryClient = useQueryClient();
+
    const { removeMissingFieldClassName, missingFieldCheck } = useMissingFieldHighlight();
 
    const [fromNetwork, setFromNetwork] = useState<string>("");
@@ -52,7 +55,7 @@ export const BidTokenModal: React.FC = () => {
    const [_depositAmount, setDepositAmount] = useState<string>("");
    const [_desiredAmount, setDesiredAmount] = useState<string>("");
 
-   const [balance, setBalance] = useState<bigint>(0n);
+   const [selectNetworkBalance, setSelectNetworkBalance] = useState<bigint>(0n);
 
    const maxHandler = useCallback(async () => {
       if (!fromNetwork || !toNetwork) {
@@ -60,6 +63,8 @@ export const BidTokenModal: React.FC = () => {
             description:
                "First, you need to select the network of the token you want to exchange and the network of the token you want to receive.",
          });
+         const el = document.getElementById("receiveTokenNetworkInputId");
+         if (el) el.classList.add(injectionMissingClassName);
          return;
       }
 
@@ -150,19 +155,30 @@ export const BidTokenModal: React.FC = () => {
    }, [isConnected, address, chainId, fromNetwork]);
 
    useEffect(() => {
-      setDepositAmount("");
-
-      if (!address || !fromNetwork || !isConnected) {
-         setBalance(0n);
-         return;
+      if (!address || !fromNetwork) return setSelectNetworkBalance(0n);
+      if (Number(fromNetwork) === chainId) {
+         return setSelectNetworkBalance(balance);
       }
 
-      const client = publicClients[Number(fromNetwork) as SupportChainIds];
-      client
-         .getBalance({ address: address as `0x${string}` })
-         .then(setBalance)
+      const cachedBalance = queryClient.getQueryData<bigint>(["balance", Number(fromNetwork), address]);
+      if (cachedBalance) return setSelectNetworkBalance(cachedBalance);
+
+      publicClients[Number(fromNetwork) as SupportChainIds]
+         .getBalance({ address: address })
+         .then((_balance) => {
+            setSelectNetworkBalance(_balance);
+            queryClient.setQueryData(["balance", Number(fromNetwork), address], _balance);
+         })
          .catch(console.error);
-   }, [address, fromNetwork, isConnected]);
+   }, [chainId, address, balance, fromNetwork]);
+
+   useEffect(() => {
+      setDepositAmount("");
+      setDesiredAmount("");
+      setDepositAmount("");
+      setToNetwork("");
+      setFromNetwork("");
+   }, []);
 
    return (
       <Dialog>
@@ -189,7 +205,7 @@ export const BidTokenModal: React.FC = () => {
                      <div className="flex gap-2">
                         <Select value={fromNetwork} onValueChange={setFromNetwork}>
                            <SelectTrigger
-                              className="requireValue flex-1"
+                              className={`${injectionClassName} flex-1`}
                               onFocus={removeMissingFieldClassName}
                               value={fromNetwork}
                            >
@@ -213,7 +229,7 @@ export const BidTokenModal: React.FC = () => {
                            onFocus={removeMissingFieldClassName}
                            type="number"
                            placeholder="수량 입력"
-                           className="requireValue flex-1"
+                           className={`${injectionClassName} flex-1`}
                            value={_depositAmount}
                            onChange={(e) => setDepositAmount(e.target.value)}
                         />
@@ -223,7 +239,7 @@ export const BidTokenModal: React.FC = () => {
                            <span>
                               * balance:{" "}
                               {formatUnits(
-                                 balance,
+                                 selectNetworkBalance,
                                  publicClients[Number(fromNetwork) as SupportChainIds].chain?.nativeCurrency.decimals ||
                                     18,
                               ).toString()}{" "}
@@ -253,7 +269,8 @@ export const BidTokenModal: React.FC = () => {
                      <div className="flex gap-2">
                         <Select value={toNetwork} onValueChange={setToNetwork}>
                            <SelectTrigger
-                              className="requireValue flex-1"
+                              id="receiveTokenNetworkInputId"
+                              className={`${injectionClassName} flex-1`}
                               onFocus={removeMissingFieldClassName}
                               value={toNetwork}
                            >
@@ -275,7 +292,7 @@ export const BidTokenModal: React.FC = () => {
                            onFocus={removeMissingFieldClassName}
                            type="number"
                            placeholder="수량 입력"
-                           className="requireValue flex-1"
+                           className={`${injectionClassName} flex-1`}
                            onChange={(e) => setDesiredAmount(e.target.value)}
                         />
                      </div>
@@ -287,7 +304,6 @@ export const BidTokenModal: React.FC = () => {
                      variant="brand"
                      className="flex w-full items-center justify-center"
                      size="lg"
-                     // disabled={true}
                   >
                      <PlusIcon className="mr-2 h-4 w-4" />
                      {bidTokenSubmitText}

@@ -1,4 +1,5 @@
-export * from "./wagmi.provider";
-export * from "./queryClient.provider";
-export * from "./theme.provider";
+export * from "./provider";
+
+export * from "./wagmi";
+export * from "./queryClient";
 export * from "./i18n";

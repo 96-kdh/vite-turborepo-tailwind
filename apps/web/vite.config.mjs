@@ -1,12 +1,12 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import Pages from "vite-plugin-pages";
-
+import react from "@vitejs/plugin-react";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import { defineConfig } from "vite";
+import Pages from "vite-plugin-pages";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -38,5 +38,9 @@ export default defineConfig({
             replacement: path.resolve(__dirname, "./src"),
          },
       ],
+   },
+   server: {
+      // host: "0.0.0.0",
+      port: 3000,
    },
 });

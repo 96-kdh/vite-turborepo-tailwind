@@ -1,8 +1,8 @@
+import { Options } from "@layerzerolabs/lz-v2-utilities";
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
 import { padHex } from "viem";
-import { Options } from "@layerzerolabs/lz-v2-utilities";
 
 describe("EndpointV2MockCustom Test", function () {
    const eidA = 1;
@@ -63,7 +63,7 @@ describe("EndpointV2MockCustom Test", function () {
             lzTokenFee: bigint;
          };
 
-         // Send message from myOAppA to myOAppB
+         // Submit message from myOAppA to myOAppB
          await myOAppA.write.send([eidB, "Test message.", options], {
             value: nativeFee.toString(),
          });

@@ -1,7 +1,3 @@
-import Order from "@/pages/order";
+import Order from "@/pages/order/list";
 
-function Home() {
-   return <Order />;
-}
-
-export default Home;
+export default Order;
