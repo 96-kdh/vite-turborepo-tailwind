@@ -1,4 +1,6 @@
-import React, { useEffect } from "react";
+import { StepBack } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 
 import { Progress } from "@workspace/ui/components/shadcn-ui";
 
@@ -10,8 +12,9 @@ const BidLayout = ({ children, page }: { children: React.ReactNode; page: BidPag
       [BidPages.submitOrder]: "주문 확인 및 제출",
       [BidPages.confirmOrder]: "최종 주문 확인",
    };
+   const navigate = useNavigate();
 
-   const [progress, setProgress] = React.useState(page);
+   const [progress, setProgress] = useState(page);
 
    useEffect(() => {
       const timer = setTimeout(() => setProgress(page + 1), 10);
@@ -19,11 +22,12 @@ const BidLayout = ({ children, page }: { children: React.ReactNode; page: BidPag
    }, []);
 
    return (
-      <div className="h-full w-full bg-slate-50">
+      <div className="h-full w-full dark:bg-neutral-900">
          <div className="md:max-h-4/5 max-w-300 mx-auto flex h-full w-full flex-col px-4 pb-2 pt-6 md:py-24">
+            <StepBack className="hover:text-brandColor h-8 w-8 cursor-pointer" onClick={() => navigate(-1)} />
             <Progress
                value={(progress / Object.keys(BidPages).filter((key) => isNaN(Number(key))).length) * 100}
-               className="mb-6"
+               className="my-4"
             />
             <h2 className="text-2xl font-bold">{bidHeader[page]}</h2>
             {children}

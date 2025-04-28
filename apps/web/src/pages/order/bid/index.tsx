@@ -2,7 +2,7 @@ import type { AppKitNetwork } from "@reown/appkit/networks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { formatUnits, getContract } from "viem";
+import { encodeFunctionData, formatUnits, getContract, parseUnits, zeroAddress } from "viem";
 
 import {
    ChainIdToEndpointId,
@@ -65,23 +65,40 @@ const WriteOrder = () => {
          abi: orderBookWithLzAbi,
          client: publicClients[fromNetworkId],
       });
-      const quoteTask = new Promise((resolve) =>
-         resolve(contract.read.quote([ChainIdToEndpointId[toNetworkId], payload, lzReceiveOption(200_000n), false])),
-      );
-      const balanceTask = new Promise((resolve) =>
-         resolve(publicClients[fromNetworkId].getBalance({ address: address as `0x${string}` })),
-      );
 
-      const values = (await Promise.all([quoteTask, balanceTask])) as [{ nativeFee: bigint }, bigint];
+      const [_quote, _balance, _gasPrice] = (await Promise.all([
+         // quoteTask
+         contract.read.quote([ChainIdToEndpointId[toNetworkId], payload, lzReceiveOption(200_000n), false]),
+         // balanceTask
+         publicClients[fromNetworkId].getBalance({ address: address as `0x${string}` }),
+         // estimatedGasPriceTask
+         publicClients[fromNetworkId].getGasPrice(),
+      ])) as [{ nativeFee: bigint }, bigint, bigint];
 
       // my balance >= native fee
-      if (values[1] >= values[0].nativeFee) {
-         const maxValue = values[1] - values[0].nativeFee;
+      if (_balance >= _quote.nativeFee) {
+         const usedGas = await publicClients[fromNetworkId].estimateGas({
+            account: zeroAddress,
+            to: ca,
+            data: encodeFunctionData({
+               abi: orderBookWithLzAbi,
+               functionName: "createOrder",
+               args: [
+                  ChainIdToEndpointId[toNetworkId],
+                  _balance - _quote.nativeFee,
+                  _balance,
+                  lzReceiveOption(200_000n),
+               ],
+            }),
+            value: _balance,
+         });
+
+         const maxValue = _balance - _quote.nativeFee - (usedGas * _gasPrice * 12n) / 10n;
          bidContext.setState({
             ...bidContext.state,
             fromAmount: formatUnits(maxValue, publicClients[fromNetworkId].chain?.nativeCurrency.decimals || 18),
          });
-      }
+      } else toast.warning("Insufficient Balance for Bid");
    }, [bidContext.state.fromChain?.id, bidContext.state.toChain?.id]);
 
    const selectTokenHandler = useCallback(
@@ -111,6 +128,22 @@ const WriteOrder = () => {
       return array;
    }, [bidContext.state.fromChain, bidContext.state.toChain]);
 
+   const nextHandler = useCallback(() => {
+      const { fromChain, fromAmount, toAmount, toChain } = bidContext.state;
+      if (!fromChain?.id || !toChain?.id || !fromAmount || !toAmount) {
+         return missingFieldCheck();
+      }
+
+      navigate("/order/bid/submit");
+   }, [bidContext.state]);
+   const nextHandlerText = useMemo(() => {
+      if (balance < parseUnits(bidContext.state.fromAmount, bidContext.state.fromChain?.decimals || 18)) {
+         return `Insufficient Balance`;
+      }
+
+      return "Preview Bid";
+   }, [bidContext.state.fromAmount, bidContext.state.fromChain, balance]);
+
    useEffect(() => {
       if (!address || !bidContext.state.fromChain?.id) return setSelectNetworkBalance(0n);
       if (Number(bidContext.state.fromChain.id) === chainId) {
@@ -132,30 +165,35 @@ const WriteOrder = () => {
 
    return (
       <BidLayout page={BidPages.writeOrder}>
-         <div className="flex h-full flex-1 flex-col">
+         <div className="flex h-full flex-1 flex-col dark:bg-neutral-900">
             <div className="grid flex-1 content-evenly justify-items-start">
+               {/* From Token */}
                <div className="max-w-120 w-full">
-                  <Label className="mb-1 text-lg font-bold">From Token</Label>
+                  <Label className="mb-1 text-lg font-bold text-gray-800 dark:text-gray-100">From Token</Label>
                   <SelectTokenModal
                      value={bidContext.state.fromChain}
-                     onChange={(network: AppKitNetwork) => selectTokenHandler(network, "fromChain")}
+                     onChange={(network) => selectTokenHandler(network, "fromChain")}
                      deleteValue={() => bidContext.setState({ ...bidContext.state, fromChain: null })}
                      selectedValues={selectedValues}
                   />
                </div>
+
+               {/* To Token */}
                <div className="max-w-120 w-full">
-                  <Label className="mb-1 text-lg font-bold">To Token</Label>
+                  <Label className="mb-1 text-lg font-bold text-gray-800 dark:text-gray-100">To Token</Label>
                   <SelectTokenModal
                      value={bidContext.state.toChain}
-                     onChange={(network: AppKitNetwork) => selectTokenHandler(network, "toChain")}
+                     onChange={(network) => selectTokenHandler(network, "toChain")}
                      deleteValue={() => bidContext.setState({ ...bidContext.state, toChain: null })}
                      selectedValues={selectedValues}
                   />
                </div>
+
+               {/* From Amount */}
                <div className="max-w-120 relative w-full">
-                  <Label className="mb-1 text-lg font-bold">From Amount</Label>
+                  <Label className="mb-1 text-lg font-bold text-gray-800 dark:text-gray-100">From Amount</Label>
                   <Input
-                     className={`${injectionClassName} min-h-8 md:min-h-12`}
+                     className={` ${injectionClassName} min-h-8 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 md:min-h-12 dark:border-neutral-600 dark:text-white dark:placeholder-gray-500`}
                      type="number"
                      placeholder="0.0"
                      value={bidContext.state.fromAmount}
@@ -163,7 +201,11 @@ const WriteOrder = () => {
                      onFocus={removeMissingFieldClassName}
                   />
                   <div
-                     className={`text-muted-foreground absolute mt-0.5 flex w-full items-center justify-between text-sm ${bidContext.state.fromChain?.id && address && bidContext.state.toChain?.id ? "visible" : "invisible"}`}
+                     className={`absolute mt-0.5 flex w-full items-center justify-between text-sm text-gray-500 dark:text-gray-400 ${
+                        bidContext.state.fromChain?.id && address && bidContext.state.toChain?.id
+                           ? "visible"
+                           : "invisible"
+                     } `}
                   >
                      <span>
                         * balance:{" "}
@@ -173,7 +215,11 @@ const WriteOrder = () => {
                      <TooltipProvider>
                         <Tooltip>
                            <TooltipTrigger asChild>
-                              <Button size="sm" className="h-6 rounded-md px-2" onClick={maxHandler}>
+                              <Button
+                                 size="sm"
+                                 className="h-6 rounded-md bg-gray-100 px-2 text-gray-800 dark:bg-neutral-700 dark:text-gray-100"
+                                 onClick={maxHandler}
+                              >
                                  Max
                               </Button>
                            </TooltipTrigger>
@@ -186,10 +232,12 @@ const WriteOrder = () => {
                      </TooltipProvider>
                   </div>
                </div>
+
+               {/* To Amount */}
                <div className="max-w-120 w-full">
-                  <Label className="mb-1 text-lg font-bold">To Amount</Label>
+                  <Label className="mb-1 text-lg font-bold text-gray-800 dark:text-gray-100">To Amount</Label>
                   <Input
-                     className={`${injectionClassName} min-h-8 md:min-h-12`}
+                     className={` ${injectionClassName} min-h-8 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 md:min-h-12 dark:border-neutral-600 dark:text-white dark:placeholder-gray-500`}
                      type="number"
                      placeholder="0.0"
                      value={bidContext.state.toAmount}
@@ -198,20 +246,16 @@ const WriteOrder = () => {
                   />
                </div>
             </div>
+
+            {/* Preview Order 버튼 */}
             <Button
                size="lg"
+               variant="brand"
                className="max-w-160 w-full"
-               onClick={() => {
-                  const { fromChain, fromAmount, toAmount, toChain } = bidContext.state;
-
-                  if (!fromChain?.id || !toChain?.id || !fromAmount || !toAmount) {
-                     return missingFieldCheck();
-                  }
-
-                  navigate("/order/bid/submit");
-               }}
+               onClick={nextHandler}
+               disabled={nextHandlerText === "Insufficient Balance"}
             >
-               Preview Order
+               {nextHandlerText}
             </Button>
          </div>
       </BidLayout>

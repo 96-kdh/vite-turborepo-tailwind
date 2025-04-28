@@ -15,3 +15,4 @@ export * from "./label";
 export * from "./textarea";
 export * from "./progress";
 export * from "./badge";
+export * from "./scroll-area";

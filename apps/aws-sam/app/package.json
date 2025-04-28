@@ -4,7 +4,7 @@
    "license": "MIT",
    "scripts": {
       "dev": "concurrently -k -n graphql,api -c green,cyan \"nodemon ./graphql/local-server.js\" \"npm run run:api\"",
-      "run:api": "cd .. && sam local start-api --env-vars env.local.json && cd app",
+      "run:api": "cd .. && sam local start-api --port 3001 --env-vars env.local.json && cd app",
       "build": "tsc && esbuild app.ts --bundle --platform=node --target=es2020 --outfile=dist/app.js && cd dist && zip eventProducer.zip app.js node_modules -r && zip eventConsumer.zip app.js node_modules -r",
       "test": "npm run compile && npm run unit",
       "test:resolvers": "./graphql/resolvers/test-resolvers.sh"

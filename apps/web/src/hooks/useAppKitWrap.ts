@@ -21,7 +21,7 @@ import { generalConfig, publicClients, wagmiAdapter } from "@/lib";
 interface AppKitWrapReturnTypes {
    balance: bigint;
    address: `0x${string}` | undefined;
-   chainId: SupportChainIds;
+   chainId: SupportChainIds | number;
    isConnected: boolean;
    open: (options?: OpenOptions) => Promise<void>;
    switchNetwork: (network: AppKitNetwork) => void;
@@ -33,25 +33,23 @@ export const useAppKitWrap = (): AppKitWrapReturnTypes => {
    const { chainId: injectionChainId, switchNetwork } = useAppKitNetwork();
    const { address: injectionAddress, isConnected } = useAppKitAccount();
    const { open } = useAppKit();
-   console.log("injectionChainId: ", injectionChainId);
 
    const [balance, setBalance] = useState<bigint>(0n);
 
-   const chainId = useMemo(
-      () =>
-         Number(injectionChainId) in SupportChainIds ? (Number(injectionChainId) as SupportChainIds) : defaultChainId,
-      [injectionChainId],
-   );
+   const chainId = useMemo(() => (injectionChainId ? Number(injectionChainId) : defaultChainId), [injectionChainId]);
    const address = useMemo(
       () => (injectionAddress ? (injectionAddress as `0x${string}`) : undefined),
       [injectionAddress],
    );
-   const client = useMemo(() => publicClients[chainId], [chainId]);
+   const client = useMemo(
+      () => (chainId in SupportChainIds ? publicClients[chainId as SupportChainIds] : undefined),
+      [chainId],
+   );
 
    const { data, isSuccess } = useQuery<bigint, Error>({
       queryKey: ["balance", chainId, address],
       queryFn: async () => {
-         return address ? await client.getBalance({ address }) : 0n;
+         return address && client ? await client.getBalance({ address }) : 0n;
       },
       staleTime: 1000 * 60, // 1분 동안은 신선한 데이터로 간주
       gcTime: 1000 * 60 * 5, // 5분 동안 캐시 보관
@@ -62,7 +60,7 @@ export const useAppKitWrap = (): AppKitWrapReturnTypes => {
       else if (isSuccess) setBalance(BigInt(data));
    }, [address, data, isSuccess]);
 
-   return { balance, address, chainId: injectionChainId, switchNetwork, isConnected, open };
+   return { balance, address, chainId, switchNetwork, isConnected, open };
 };
 
 // Create modal
@@ -137,7 +135,7 @@ export const useWeb3Modal = () => {
                };
                promiseTask.push(
                   new Promise((resolve) =>
-                     resolve(axios.post("http://localhost:3000/event", JSON.stringify(webhookPayload))),
+                     resolve(axios.post("http://localhost:3001/event", JSON.stringify(webhookPayload))),
                   ),
                );
             }

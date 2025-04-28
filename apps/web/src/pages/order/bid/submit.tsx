@@ -1,4 +1,5 @@
 import type { AppKitNetwork } from "@reown/appkit/networks";
+import { CircleAlert } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { encodeFunctionData, formatUnits, parseUnits, zeroAddress } from "viem";
@@ -7,6 +8,7 @@ import { useWriteContract } from "wagmi";
 import {
    ChainIdToEndpointId,
    ContractNames,
+   ErrorMsg,
    SupportChainIds,
    contractAddresses,
    encodePayloadOrderBook,
@@ -14,7 +16,14 @@ import {
    orderBookWithLzAbi,
 } from "@workspace/hardhat";
 import { LoadingSpinner } from "@workspace/ui/components/custom-ui";
-import { Button } from "@workspace/ui/components/shadcn-ui";
+import {
+   Button,
+   Tooltip,
+   TooltipContent,
+   TooltipProvider,
+   TooltipTrigger,
+   toast,
+} from "@workspace/ui/components/shadcn-ui";
 
 import BidLayout from "@/components/_layout/order/bid/BidLayout";
 import { useAppKitWrap } from "@/hooks/useAppKitWrap";
@@ -34,8 +43,8 @@ const SubmitOrder = () => {
       return;
    }
 
-   const { chainId, switchNetwork, address, isConnected, open } = useAppKitWrap();
-   const { writeContract, isSuccess, isPending, data, status } = useWriteContract();
+   const { chainId, switchNetwork, address, isConnected, open, balance } = useAppKitWrap();
+   const { writeContract, isSuccess, isPending, data, status, error } = useWriteContract();
 
    const [fromNetworkId, toNetworkId] = useMemo(() => {
       const [fromNetworkId, toNetworkId]: [SupportChainIds, SupportChainIds] = [
@@ -63,8 +72,6 @@ const SubmitOrder = () => {
    });
 
    const submitHandler = useCallback(async () => {
-      console.log("chainId: ", chainId);
-      console.log("fromNetworkId: ", fromNetworkId);
       if (!isConnected || !address) return open();
       else if (Number(chainId) !== fromNetworkId) {
          const selectedNetwork = networks.filter((network) => Number(network.id) === fromNetworkId);
@@ -90,6 +97,15 @@ const SubmitOrder = () => {
       desiredAmount,
       estimatedGas.crossChainFee,
    ]);
+   const submitHandlerText = useMemo(() => {
+      if (!isConnected || !address) return "Connect Wallet";
+      else if (Number(chainId) !== Number(fromNetworkId)) return "Change Network";
+      else if (balance < depositAmount + estimatedGas.networkFee + estimatedGas.crossChainFee) {
+         return `Insufficient Balance`;
+      }
+
+      return "Submit";
+   }, [isConnected, address, chainId, fromNetworkId, balance, depositAmount, estimatedGas]);
 
    useEffect(() => {
       const ca = contractAddresses[fromNetworkId as SupportChainIds][ContractNames.OrderBookWithLz];
@@ -139,6 +155,21 @@ const SubmitOrder = () => {
       });
    }, [fromNetworkId, toNetworkId, depositAmount, desiredAmount]);
 
+   useEffect(() => {
+      if (status === "idle" || status === "pending") return;
+      else if (status === "error" && error) {
+         if (error.message.includes(ErrorMsg.userRejected)) {
+            toast.error(ErrorMsg.userRejected);
+            return;
+         }
+         toast.error(error.name, { description: error.message });
+         console.error(error);
+         return;
+      } else if (status === "success" && isSuccess && data) {
+         navigate(`/order/bid/${data}`);
+      }
+   }, [status, error, isSuccess, data]);
+
    return (
       <BidLayout page={BidPages.submitOrder}>
          <div className="flex h-full flex-1 flex-col">
@@ -179,7 +210,20 @@ const SubmitOrder = () => {
                </div>
 
                <div className="max-w-120 flex w-full flex-row justify-between">
-                  <span className="text-muted-foreground">Network Fee</span>
+                  <div className="flex gap-2">
+                     <span className="text-muted-foreground">Network Fee</span>
+                     <TooltipProvider>
+                        <Tooltip>
+                           <TooltipTrigger>
+                              <CircleAlert color="var(--muted-foreground)" size="18" />
+                           </TooltipTrigger>
+                           <TooltipContent>
+                              <span>트랜잭션 비용</span>
+                           </TooltipContent>
+                        </Tooltip>
+                     </TooltipProvider>
+                  </div>
+
                   <span className="text-foreground">
                      {formatUnits(estimatedGas.networkFee, bidContext.state.fromChain.decimals).toString()}{" "}
                      <span className="text-muted-foreground text-xs">{bidContext.state.fromChain.symbol}</span>
@@ -187,7 +231,19 @@ const SubmitOrder = () => {
                </div>
 
                <div className="max-w-120 flex w-full flex-row justify-between">
-                  <span className="text-muted-foreground">CrossChain Fee</span>
+                  <div className="flex gap-2">
+                     <span className="text-muted-foreground">CrossChain Fee</span>
+                     <TooltipProvider>
+                        <Tooltip>
+                           <TooltipTrigger>
+                              <CircleAlert color="var(--muted-foreground)" size="18" />
+                           </TooltipTrigger>
+                           <TooltipContent>
+                              <span>크로스체인 이용 수수료로 value transfer 내부에 포함됩니다.</span>
+                           </TooltipContent>
+                        </Tooltip>
+                     </TooltipProvider>
+                  </div>
                   <span className="text-foreground">
                      {formatUnits(estimatedGas.crossChainFee, bidContext.state.fromChain.decimals).toString()}{" "}
                      <span className="text-muted-foreground text-xs">{bidContext.state.fromChain.symbol}</span>
@@ -211,11 +267,12 @@ const SubmitOrder = () => {
                   Back
                </Button>
                <Button
+                  variant="brand"
                   className="flex-1"
                   onClick={submitHandler}
-                  // navigate("/order/bid/confirm");
+                  disabled={submitHandlerText === "Insufficient Balance"}
                >
-                  {isPending ? <LoadingSpinner /> : "Confirm Swap"}
+                  {isPending ? <LoadingSpinner /> : submitHandlerText}
                </Button>
             </div>
          </div>

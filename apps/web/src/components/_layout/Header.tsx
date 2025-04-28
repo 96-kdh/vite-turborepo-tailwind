@@ -1,21 +1,34 @@
+import { useAppKitAccount } from "@reown/appkit/react";
+import {
+   ChevronRight,
+   Menu,
+   Moon,
+   MoreHorizontal,
+   PanelLeft,
+   PanelRight,
+   Sun,
+   TriangleAlert,
+   Wallet,
+} from "lucide-react";
 import React from "react";
-import { Menu, Wallet, MoreHorizontal, Sun, Moon, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAppKitAccount, useAppKit } from "@reown/appkit/react";
 
-import { useTheme } from "@/hooks/useTheme";
-import { SupportedLanguage } from "@/lib";
-
+import { SupportChainIds } from "@workspace/hardhat";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@workspace/ui/components/shadcn-ui";
 import { Button } from "@workspace/ui/components/shadcn-ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/shadcn-ui/popover";
 import { useSidebar } from "@workspace/ui/components/shadcn-ui/sidebar";
+
+import { useAppKitWrap } from "@/hooks/useAppKitWrap";
+import { useTheme } from "@/hooks/useTheme";
+import { SupportedLanguage } from "@/lib";
 import { shortenAddress } from "@/utils";
 
 const AppHeader = () => {
-   const { toggleSidebar } = useSidebar();
+   const { toggleSidebar, state, isMobile } = useSidebar();
    const { setTheme, theme } = useTheme();
    const { t, i18n } = useTranslation();
-   const { open } = useAppKit();
+   const { open, chainId } = useAppKitWrap();
 
    const { address, isConnected } = useAppKitAccount(); // AppKit hook to get the account information
 
@@ -34,14 +47,36 @@ const AppHeader = () => {
    };
 
    return (
-      <header className="dark:bg-sidebar flex h-16 w-full items-center justify-between bg-white px-4 shadow">
+      <header className="dark:bg-sidebar bg-sidebar border-b-1 flex h-16 w-full items-center justify-between px-4">
          {/* 왼쪽: 사이드 네비게이션 토글 아이콘 */}
-         <button onClick={toggleSidebar} className="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-            <Menu className="h-6 w-6" />
+         <button onClick={toggleSidebar} className="rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-600">
+            {isMobile ? (
+               <Menu className="h-6 w-6" />
+            ) : state === "collapsed" ? (
+               <PanelRight className="h-6 w-6" />
+            ) : (
+               <PanelLeft className="h-6 w-6" />
+            )}
          </button>
 
          {/* 오른쪽: Wallet 버튼 및 '더보기' 팝오버 */}
          <div className="flex items-center space-x-4">
+            {!(chainId in SupportChainIds) && (
+               <TooltipProvider>
+                  <Tooltip>
+                     <TooltipTrigger id="open-network-modal">
+                        <TriangleAlert color="red" />
+                     </TooltipTrigger>
+                     <TooltipContent>
+                        <span>
+                           현재 접속하신 네트워크는 지원되지 않는 네트워크입니다. 데이터 표기가 일부 올바르지 않을 수
+                           있습니다.
+                        </span>
+                     </TooltipContent>
+                  </Tooltip>
+               </TooltipProvider>
+            )}
+
             {/* 더보기 아이콘 및 팝오버 */}
             <Popover>
                <PopoverTrigger>
@@ -124,7 +159,7 @@ const AppHeader = () => {
 
             {/* Wallet 연결 버튼 */}
 
-            <Button variant="outline" className="flex items-center px-4 py-2" onClick={() => open()}>
+            <Button variant="brand" className="flex items-center px-4 py-2" onClick={() => open()}>
                {isConnected && address ? (
                   shortenAddress(address)
                ) : (

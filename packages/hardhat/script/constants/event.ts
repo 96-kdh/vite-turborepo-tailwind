@@ -17,6 +17,7 @@ export const SupportedEventNames = (): { [key in SupportedEvent]: string } => {
    const result = {} as { [key in SupportedEvent]: string };
 
    for (const value of Object.values(SupportedEvent)) {
+      // @ts-ignore
       result[value as SupportedEvent] = value.split("(")[0];
    }
 
@@ -36,6 +37,7 @@ export const SupportedEventSig = (): { [key in SupportedEvent]: string } => {
 
    for (const value of Object.values(SupportedEvent)) {
       const [_eventName, _leftover] = value.split("(");
+      // @ts-ignore
       const _leftovers = _leftover.replace(")", "").split(",");
 
       const arr = [];

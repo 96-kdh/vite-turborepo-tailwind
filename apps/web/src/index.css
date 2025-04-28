@@ -20,5 +20,5 @@ input[type="number"] {
 }
 
 .missingField {
-  border: 1px solid darkred;
+  border: 1px solid var(--destructive);
 }

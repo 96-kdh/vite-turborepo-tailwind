@@ -2,7 +2,14 @@ import type { AppKitNetwork } from "@reown/appkit/networks";
 import { ChevronDown, CircleX } from "lucide-react";
 import React, { useState } from "react";
 
-import { Dialog, DialogContent, DialogTitle, DialogTrigger, Input } from "@workspace/ui/components/shadcn-ui";
+import {
+   Dialog,
+   DialogContent,
+   DialogTitle,
+   DialogTrigger,
+   Input,
+   ScrollArea,
+} from "@workspace/ui/components/shadcn-ui";
 
 import useMissingFieldHighlight, { injectionClassName } from "@/hooks/useMissingFieldHighlight";
 import { BidNetwork, networks } from "@/lib";
@@ -45,11 +52,11 @@ const SelectTokenModal: React.FC<{
          <DialogTrigger asChild>
             <button
                value={value?.id}
-               className={`${injectionClassName} flex min-h-8 w-full cursor-pointer items-center justify-between rounded-md border border-gray-300 px-3 py-2 hover:border-gray-400 md:min-h-12`}
+               className={`${injectionClassName} flex min-h-8 w-full cursor-pointer items-center justify-between rounded-md border border-gray-300 px-3 py-2 hover:border-gray-400 md:min-h-12 dark:border-gray-500`}
                onFocus={removeMissingFieldClassName}
             >
-               <span className={`flex ${value ? "text-gray-900" : "text-gray-400"}`}>
-                  {value?.name || "토큰 선택"}
+               <span className={`flex ${value ? "text-foreground" : "text-gray-400"}`}>
+                  {value ? `${value.name} (${value.symbol})` : "토큰 및 네트워크 선택"}
                   {value && (
                      <CircleX
                         className="ml-1.5 hover:text-gray-400"
@@ -63,19 +70,24 @@ const SelectTokenModal: React.FC<{
                <ChevronDown className="h-5 w-5 text-gray-500" />
             </button>
          </DialogTrigger>
-         <DialogContent className="m-0 mx-auto h-full w-full max-w-md overflow-auto p-0 md:h-auto md:rounded-lg md:shadow-lg">
-            <div className="flex items-center border-b p-4">
-               <DialogTitle className="flex-1 text-center font-medium">토큰 선택</DialogTitle>
+         <DialogContent className="bg-background top-[51%] flex h-[98%] min-h-0 w-full max-w-lg flex-col rounded-lg p-0 md:top-[50%] md:h-2/5 md:shadow-lg">
+            <div className="border-b p-4">
+               <DialogTitle className="text-center font-medium">토큰 선택</DialogTitle>
             </div>
-            <div className="p-4">
-               <Input placeholder="검색" value={search} onChange={(e) => setSearch(e.target.value)} className="mb-4" />
-               <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            <div className="flex h-full min-h-0 flex-col p-4 pt-0">
+               <Input
+                  placeholder="name, symbol, ChainId .."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="mb-4 p-4"
+               />
+               <ScrollArea className="h-[90%] w-full flex-1 rounded-md border">
                   {filtered.map((net) => {
                      const isSelected = selectedValues.filter((v) => v.id === net.id).length > 0;
                      return (
                         <div
                            key={net.id}
-                           className={`cursor-pointer rounded-lg p-3 hover:bg-gray-100 ${isSelected && "bg-gray-100"}`}
+                           className={`hover:bg-muted cursor-pointer p-3 ${isSelected ? "bg-muted" : ""}`}
                            onClick={() => {
                               setSearch("");
                               onChange(net);
@@ -86,7 +98,7 @@ const SelectTokenModal: React.FC<{
                         </div>
                      );
                   })}
-               </div>
+               </ScrollArea>
             </div>
          </DialogContent>
       </Dialog>
