@@ -1,13 +1,41 @@
 /**
-Archive
+Archive 1
 	transactionHash (partition key)
 	logIndexChainId (sort key)
 
 	msgSender (GSI, pk)
-	eventSig (GSI, pk)
 	timestamp (GSI, sort key)
 
+    eventSig
     chainId
+	contractAddress
+	topics
+	data
+ */
+/**
+Archive 2
+	chainId (partition key)
+	encodedCompositeKey (sort key) -->> coder.encode(['string', 'uint32'], [transactionHash, logIndex])
+
+	msgSender (LSI, pk)
+	timestamp (LSI, sort key)
+
+    eventSig
+    chainId
+	contractAddress
+	topics
+	data
+ */
+/**
+Archive 3
+	msgSender (partition key)
+	encodedCompositeKey (sort key) -->> coder.encode(['uint32', 'string', 'uint32'], [chainId, transactionHash, logIndex])
+
+	chainId (LSI, sort key)
+	timestamp (LSI, sort key)
+
+    transactionHash
+    eventSig
 	contractAddress
 	topics
 	data
@@ -15,56 +43,87 @@ Archive
 resource "aws_dynamodb_table" "Archive" {
   name         = "Archive"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "transactionHash"
-  range_key    = "logIndexChainId"
+  hash_key     = "msgSender"
+  range_key    = "encodedCompositeKey"
 
-  attribute {
-    name = "transactionHash"
-    type = "S"
-  }
-  attribute {
-    name = "logIndexChainId"
-    type = "S"
-  }
   attribute {
     name = "msgSender"
     type = "S"
   }
   attribute {
-    name = "eventSig"
+    name = "encodedCompositeKey"
     type = "S"
+  }
+  attribute {
+    name = "chainId"
+    type = "N"
   }
   attribute {
     name = "timestamp"
     type = "N"
   }
 
-  global_secondary_index {
-    name            = "GSI_msgSender_timestamp"
-    hash_key        = "msgSender"
-    range_key       = "timestamp"
+  local_secondary_index {
+    name            = "LSI_orderStatus_chainId"
+    range_key       = "chainId"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["transactionHash", "chainId"]
+    non_key_attributes = ["timestamp", "transactionHash", "eventSig", "contractAddress"]
   }
-  global_secondary_index {
-    name            = "GSI_eventSig_timestamp"
-    hash_key        = "eventSig"
+  local_secondary_index {
+    name            = "LSI_orderStatus_timestamp"
     range_key       = "timestamp"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["transactionHash", "chainId", "msgSender", "topics", "data"]
+    non_key_attributes = ["chainId", "transactionHash", "eventSig", "contractAddress"]
   }
 }
 
 /**
-OrderTable
-	orderId (partition key)
-	chainId (sort key)
+OrderTable 1
+	chainId (partition key) // deposit chainId,
+	orderId (sort key)
+	dstChainId (LSI, sort key) // desire chainId,
 
 	maker (GSI, pk)
 	taker (GSI, pk)
 	orderStatus (GSI, pk)
 	createdAt (GSI, sort key)
+	depositAmount (GSI, sort key)
+	desiredAmount (GSI, sort key)
 
+	updatedAt
+	blockNumber
+ */
+/**
+OrderTable 2
+    orderStatus (partition key)
+    encodedCompositeKey (sort key) -->> coder.encode(['uint32', 'uint256'], [chainId, orderId])
+
+	chainId (LSI, sort key)
+	dstChainId (LSI, sort key)
+    maker (LSI, sort key)
+    createdAt (LSI, sort key)
+
+	orderId
+	taker
+	depositAmount
+	desiredAmount
+	updatedAt
+	blockNumber
+ */
+/**
+OrderTable 3
+	chainId (partition key)
+	orderId (sort key)
+
+    orderStatus (GSI, partition key)
+      createdAt (GSI, sort key)
+      dstChainId (GSI, sort key)
+      maker (GSI, sort key)
+
+    orderStatus (LSI, sort key)
+
+	orderId
+	taker
 	depositAmount
 	desiredAmount
 	updatedAt
@@ -73,11 +132,15 @@ OrderTable
 resource "aws_dynamodb_table" "Order" {
   name         = "Order"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "orderId"
-  range_key    = "chainId"
+  hash_key     = "orderStatus"
+  range_key    = "encodedCompositeKey"
 
   attribute {
-    name = "orderId"
+    name = "orderStatus"
+    type = "N"
+  }
+  attribute {
+    name = "encodedCompositeKey"
     type = "S"
   }
   attribute {
@@ -85,42 +148,41 @@ resource "aws_dynamodb_table" "Order" {
     type = "N"
   }
   attribute {
+    name = "dstChainId"
+    type = "N"
+  }
+  attribute {
     name = "maker"
     type = "S"
-  }
-  attribute {
-    name = "taker"
-    type = "S"
-  }
-  attribute {
-    name = "orderStatus"
-    type = "N"
   }
   attribute {
     name = "createdAt"
     type = "N"
   }
 
-  global_secondary_index {
-    name            = "GSI_maker_createdAt"
-    hash_key        = "maker"
-    range_key       = "createdAt"
+  local_secondary_index {
+    name            = "LSI_orderStatus_chainId"
+    range_key       = "chainId"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["orderId", "chainId", "taker", "depositAmount", "desiredAmount", "orderStatus"]
+    non_key_attributes = ["dstChainId", "orderId", "createdAt", "maker", "taker", "depositAmount", "desiredAmount"]
   }
-  global_secondary_index {
-    name            = "GSI_taker_createdAt"
-    hash_key        = "taker"
-    range_key       = "createdAt"
+  local_secondary_index {
+    name            = "LSI_orderStatus_dstChainId"
+    range_key       = "dstChainId"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["orderId", "chainId", "maker", "depositAmount", "desiredAmount", "orderStatus"]
+    non_key_attributes = ["chainId", "orderId", "createdAt", "maker", "taker", "depositAmount", "desiredAmount"]
   }
-  global_secondary_index {
-    name            = "GSI_orderStatus_createdAt"
-    hash_key        = "orderStatus"
+  local_secondary_index {
+    name            = "LSI_orderStatus_maker"
+    range_key       = "maker"
+    projection_type    = "INCLUDE"
+    non_key_attributes = ["dstChainId", "chainId", "orderId", "createdAt", "taker", "depositAmount", "desiredAmount"]
+  }
+  local_secondary_index {
+    name            = "LSI_orderStatus_createdAt"
     range_key       = "createdAt"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["orderId", "chainId", "maker", "taker", "depositAmount", "desiredAmount"]
+    non_key_attributes = ["dstChainId", "chainId", "orderId", "maker", "taker", "depositAmount", "desiredAmount"]
   }
 }
 

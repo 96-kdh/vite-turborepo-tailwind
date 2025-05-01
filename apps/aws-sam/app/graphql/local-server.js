@@ -1,14 +1,16 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { GetCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { ApolloServer, gql } from "apollo-server";
 import { readFileSync } from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 import { request as getOrderRequest } from "./resolvers/getOrder.js";
+import { request as listOrders } from "./resolvers/listOrders.js";
+import { request as listOrdersByChainIdRequest } from "./resolvers/listOrdersByChainId.js";
+import { request as listOrdersByCreatedAtRequest } from "./resolvers/listOrdersByCreatedAt.js";
+import { request as listOrdersByDstChainIdRequest } from "./resolvers/listOrdersByDstChainId.js";
 import { request as listOrdersByMakerRequest } from "./resolvers/listOrdersByMaker.js";
-import { request as listOrdersByTakerRequest } from "./resolvers/listOrdersByTaker.js";
-import { request as listOrdersByStatusRequest } from "./resolvers/listOrdersByStatus.js";
 
 // ✅ ESM용 __dirname 대체
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +25,23 @@ const dynamoClient = new DynamoDBClient({
    endpoint: "http://localhost:4566",
 });
 
+const _OrderQuery = async ({ index, query, nextToken, limit }) => {
+   const res = await dynamoClient.send(
+      new QueryCommand({
+         TableName: "Order",
+         IndexName: index,
+         KeyConditionExpression: query.expression,
+         ExpressionAttributeValues: query.expressionValues,
+         Limit: limit,
+         ExclusiveStartKey: nextToken,
+      }),
+   );
+   return {
+      items: res.Items,
+      nextToken: res.LastEvaluatedKey,
+   };
+};
+
 const resolvers = {
    Query: {
       getOrder: async (_, args) => {
@@ -35,56 +54,35 @@ const resolvers = {
          );
          return res.Item;
       },
+      listOrders: async (_, args) => {
+         const { nextToken, limit } = listOrders({ args });
+         const res = await dynamoClient.send(
+            new ScanCommand({
+               TableName: "Order",
+               Limit: limit,
+               ExclusiveStartKey: nextToken,
+            }),
+         );
+         return {
+            items: res.Items,
+            nextToken: res.LastEvaluatedKey,
+         };
+      },
+      listOrdersByChainId: async (_, args) => {
+         const { index, query, nextToken, limit } = listOrdersByChainIdRequest({ args });
+         return _OrderQuery({ index, query, nextToken, limit });
+      },
+      listOrdersByCreatedAt: async (_, args) => {
+         const { index, query, nextToken, limit } = listOrdersByCreatedAtRequest({ args });
+         return _OrderQuery({ index, query, nextToken, limit });
+      },
+      listOrdersByDstChainId: async (_, args) => {
+         const { index, query, nextToken, limit } = listOrdersByDstChainIdRequest({ args });
+         return _OrderQuery({ index, query, nextToken, limit });
+      },
       listOrdersByMaker: async (_, args) => {
          const { index, query, nextToken, limit } = listOrdersByMakerRequest({ args });
-         const res = await dynamoClient.send(
-            new QueryCommand({
-               TableName: "Order",
-               IndexName: index,
-               KeyConditionExpression: query.expression,
-               ExpressionAttributeValues: query.expressionValues,
-               Limit: limit,
-               ExclusiveStartKey: nextToken,
-            }),
-         );
-         return {
-            items: res.Items,
-            nextToken: res.LastEvaluatedKey,
-         };
-      },
-      listOrdersByTaker: async (_, args) => {
-         const { index, query, nextToken, limit } = listOrdersByTakerRequest({ args });
-         const res = await dynamoClient.send(
-            new QueryCommand({
-               TableName: "Order",
-               IndexName: index,
-               KeyConditionExpression: query.expression,
-               ExpressionAttributeValues: query.expressionValues,
-               Limit: limit,
-               ExclusiveStartKey: nextToken,
-            }),
-         );
-         return {
-            items: res.Items,
-            nextToken: res.LastEvaluatedKey,
-         };
-      },
-      listOrdersByStatus: async (_, args) => {
-         const { index, query, nextToken, limit } = listOrdersByStatusRequest({ args });
-         const res = await dynamoClient.send(
-            new QueryCommand({
-               TableName: "Order",
-               IndexName: index,
-               KeyConditionExpression: query.expression,
-               ExpressionAttributeValues: query.expressionValues,
-               Limit: limit,
-               ExclusiveStartKey: nextToken,
-            }),
-         );
-         return {
-            items: res.Items,
-            nextToken: res.LastEvaluatedKey,
-         };
+         return _OrderQuery({ index, query, nextToken, limit });
       },
    },
 };

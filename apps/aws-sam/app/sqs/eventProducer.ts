@@ -1,7 +1,7 @@
-import { APIGatewayProxyEvent } from "aws-lambda";
 import { SendMessageBatchCommand } from "@aws-sdk/client-sqs";
-
+import { APIGatewayProxyEvent } from "aws-lambda";
 import { CustomResponse, division, sqsClient } from "utils";
+
 import {
    AlchemyWebhookPayload,
    NetworkToChainId,
@@ -31,8 +31,8 @@ export const eventProducer = async (event: APIGatewayProxyEvent) => {
 
          const chainId = NetworkToChainId[eventBody.event.network] || 0; // Unknown chainId is zero
          // const messageId = coder.encode(
-         //    ["uint256", "uint256", "bytes32", "uint256"],
-         //    [BigInt(chainId), BigInt(eventBody.event.data.block.number), log.topics[0], BigInt(log.transaction.index)],
+         //    ["uint32", "uint256", "bytes32", "uint256"],
+         //    [Number(chainId), BigInt(eventBody.event.data.block.number), log.topics[0], BigInt(log.transaction.index)],
          // ); // chainId + blockNumber + eventSig + transactionIndex  // 같은 데이터가 아니라면 무조건 유니크해야하는 속성
 
          const messageBody: SqsEventMessageBody = {

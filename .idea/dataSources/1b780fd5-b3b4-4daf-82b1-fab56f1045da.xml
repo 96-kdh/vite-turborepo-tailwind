@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataSource name="@localhost">
+  <database-model serializer="dbm" dbms="DYNAMO" family-id="DYNAMO" format-version="4.53">
+    <root id="1">
+      <ServerVersion>1.0</ServerVersion>
+    </root>
+    <schema id="2" parent="1" name="schema"/>
+    <table id="3" parent="2" name="Archive">
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+    </table>
+    <table id="4" parent="2" name="Order">
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+    </table>
+    <column id="5" parent="3" name="msgSender">
+      <Position>1</Position>
+      <StoredType>S|0s</StoredType>
+    </column>
+    <column id="6" parent="3" name="encodedCompositeKey">
+      <Position>2</Position>
+      <StoredType>S|0s</StoredType>
+    </column>
+    <column id="7" parent="3" name="chainId">
+      <Position>3</Position>
+      <StoredType>N|0s</StoredType>
+    </column>
+    <column id="8" parent="3" name="timestamp">
+      <Position>4</Position>
+      <StoredType>N|0s</StoredType>
+    </column>
+    <index id="9" parent="3" name="LSI_orderStatus_chainId">
+      <ProjectedColumnNames>timestamp
+transactionHash
+eventSig
+contractAddress</ProjectedColumnNames>
+      <ProjectionType>include</ProjectionType>
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+      <PartitionColumnName>msgSender</PartitionColumnName>
+      <SortColumnName>chainId</SortColumnName>
+    </index>
+    <index id="10" parent="3" name="LSI_orderStatus_timestamp">
+      <ProjectedColumnNames>chainId
+transactionHash
+eventSig
+contractAddress</ProjectedColumnNames>
+      <ProjectionType>include</ProjectionType>
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+      <PartitionColumnName>msgSender</PartitionColumnName>
+      <SortColumnName>timestamp</SortColumnName>
+    </index>
+    <key id="11" parent="3" name="primary key">
+      <PartitionColumnName>msgSender</PartitionColumnName>
+      <SortColumnName>encodedCompositeKey</SortColumnName>
+    </key>
+    <column id="12" parent="4" name="dstChainId">
+      <Position>1</Position>
+      <StoredType>N|0s</StoredType>
+    </column>
+    <column id="13" parent="4" name="maker">
+      <Position>2</Position>
+      <StoredType>S|0s</StoredType>
+    </column>
+    <column id="14" parent="4" name="encodedCompositeKey">
+      <Position>3</Position>
+      <StoredType>S|0s</StoredType>
+    </column>
+    <column id="15" parent="4" name="chainId">
+      <Position>4</Position>
+      <StoredType>N|0s</StoredType>
+    </column>
+    <column id="16" parent="4" name="orderStatus">
+      <Position>5</Position>
+      <StoredType>N|0s</StoredType>
+    </column>
+    <column id="17" parent="4" name="createdAt">
+      <Position>6</Position>
+      <StoredType>N|0s</StoredType>
+    </column>
+    <index id="18" parent="4" name="LSI_orderStatus_dstChainId">
+      <ProjectedColumnNames>chainId
+orderId
+createdAt
+maker
+taker
+depositAmount
+desiredAmount</ProjectedColumnNames>
+      <ProjectionType>include</ProjectionType>
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+      <PartitionColumnName>orderStatus</PartitionColumnName>
+      <SortColumnName>dstChainId</SortColumnName>
+    </index>
+    <index id="19" parent="4" name="LSI_orderStatus_maker">
+      <ProjectedColumnNames>dstChainId
+chainId
+orderId
+createdAt
+taker
+depositAmount
+desiredAmount</ProjectedColumnNames>
+      <ProjectionType>include</ProjectionType>
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+      <PartitionColumnName>orderStatus</PartitionColumnName>
+      <SortColumnName>maker</SortColumnName>
+    </index>
+    <index id="20" parent="4" name="LSI_orderStatus_chainId">
+      <ProjectedColumnNames>dstChainId
+orderId
+createdAt
+maker
+taker
+depositAmount
+desiredAmount</ProjectedColumnNames>
+      <ProjectionType>include</ProjectionType>
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+      <PartitionColumnName>orderStatus</PartitionColumnName>
+      <SortColumnName>chainId</SortColumnName>
+    </index>
+    <index id="21" parent="4" name="LSI_orderStatus_createdAt">
+      <ProjectedColumnNames>dstChainId
+chainId
+orderId
+maker
+taker
+depositAmount
+desiredAmount</ProjectedColumnNames>
+      <ProjectionType>include</ProjectionType>
+      <ReadThroughput>0</ReadThroughput>
+      <WriteThroughput>0</WriteThroughput>
+      <PartitionColumnName>orderStatus</PartitionColumnName>
+      <SortColumnName>createdAt</SortColumnName>
+    </index>
+    <key id="22" parent="4" name="primary key">
+      <PartitionColumnName>orderStatus</PartitionColumnName>
+      <SortColumnName>encodedCompositeKey</SortColumnName>
+    </key>
+  </database-model>
+</dataSource>

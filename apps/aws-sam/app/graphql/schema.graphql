@@ -1,10 +1,14 @@
 type Order {
-    orderId: ID!
-    chainId: Int!
-    maker: String!
-    taker: String
     orderStatus: Int!
+    encodedCompositeKey: String!
+
+    chainId: Int!
+    dstChainId: Int!
+    maker: String
     createdAt: Int!
+
+    orderId: ID!
+    taker: String
     depositAmount: Float
     desiredAmount: Float
     updatedAt: Int
@@ -17,10 +21,12 @@ type PaginatedOrders {
 }
 
 type Query {
-    getOrder(orderId: ID!, chainId: Int!): Order
-    listOrdersByMaker(maker: String!, createdAtFrom: Int, createdAtTo: Int): PaginatedOrders!
-    listOrdersByTaker(taker: String!, createdAtFrom: Int, createdAtTo: Int): PaginatedOrders!
-    listOrdersByStatus(orderStatus: Int!, createdAtFrom: Int, createdAtTo: Int): PaginatedOrders!
+    getOrder(orderStatus: ID!, encodedCompositeKey: Int!, nextToken: String, limit: Int): Order
+    listOrders(nextToken: String, limit: Int): PaginatedOrders!
+    listOrdersByChainId(orderStatus: Int!, chainId: Int!, nextToken: String, limit: Int): PaginatedOrders!
+    listOrdersByCreatedAt(orderStatus: Int!, createdAtFrom: Int!, createdAtTo: Int!, nextToken: String, limit: Int): PaginatedOrders!
+    listOrdersByDstChainId(orderStatus: Int!, dstChainId: Int!, nextToken: String, limit: Int): PaginatedOrders!
+    listOrdersByMaker(orderStatus: Int!, maker: String!, nextToken: String, limit: Int): PaginatedOrders!
 }
 
 schema {

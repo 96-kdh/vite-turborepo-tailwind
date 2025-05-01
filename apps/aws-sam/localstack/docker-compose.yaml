@@ -12,6 +12,28 @@ services:
       - LAMBDA_EXECUTOR=docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+  # ───────────────────────────────────────────────────────────
+  # 로컬용 PostgreSQL 14
+  postgres:
+    image: postgres:14
+    container_name: pg14_local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: local
+      POSTGRES_PASSWORD: local
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      # 컨테이너 초기화 시 여기에 있는 .sql을 실행하여 스키마 생성
+      - ./postgres/initdb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U local" ]
+      interval: 5s
+      retries: 5
+  # ───────────────────────────────────────────────────────────
+
   terraform-run:
     image: hashicorp/terraform:1.5.2
     container_name: terraform-run

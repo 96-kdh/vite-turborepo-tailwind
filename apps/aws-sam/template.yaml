@@ -355,6 +355,50 @@ Resources:
         Name: APPSYNC_JS
         RuntimeVersion: "1.0.0"
       CodeS3Location: app/graphql/resolvers/getOrder.js
+  ResolverListOrders:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+      TypeName: Scan
+      FieldName: listOrders
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrders.js
+  ResolverListOrdersByChainId:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listOrdersByChainId
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrdersByChainId.js
+  ResolverListOrdersByCreatedAt:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listOrdersByCreatedAt
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrdersByCreatedAt.js
+  ResolverListOrdersByDstChainId:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listOrdersByDstChainId
+      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: "1.0.0"
+      CodeS3Location: app/graphql/resolvers/listOrdersByDstChainId.js
   ResolverListOrdersByMaker:
     Type: AWS::AppSync::Resolver
     Properties:
@@ -366,25 +410,3 @@ Resources:
         Name: APPSYNC_JS
         RuntimeVersion: "1.0.0"
       CodeS3Location: app/graphql/resolvers/listOrdersByMaker.js
-  ResolverListOrdersByTaker:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Query
-      FieldName: listOrdersByTaker
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrdersByTaker.js
-  ResolverListOrdersByStatus:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Query
-      FieldName: listOrdersByStatus
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrdersByStatus.js

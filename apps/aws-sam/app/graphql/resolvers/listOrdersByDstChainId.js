@@ -1,16 +1,16 @@
 import { util } from "@aws-appsync/utils";
 
 export function request(ctx) {
-   const { orderStatus, maker, nextToken, limit = 20 } = ctx.args;
+   const { orderStatus, dstChainId, nextToken, limit = 20 } = ctx.args;
 
    return {
       operation: "Query",
-      index: "LSI_orderStatus_maker",
+      index: "LSI_orderStatus_dstChainId",
       query: {
-         expression: "orderStatus = :status AND maker = :maker",
+         expression: "orderStatus = :status AND dstChainId = :dcid",
          expressionValues: {
             ":status": util.dynamodb ? util.dynamodb.toDynamoDB(orderStatus) : orderStatus,
-            ":maker": util.dynamodb ? util.dynamodb.toDynamoDB(maker) : maker,
+            ":dcid": util.dynamodb ? util.dynamodb.toDynamoDB(dstChainId) : dstChainId,
          },
       },
       nextToken,

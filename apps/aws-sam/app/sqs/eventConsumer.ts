@@ -1,17 +1,17 @@
-import { AbiCoder, ZeroAddress } from "ethers";
 import { BatchWriteCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 import { SQSEvent, SQSHandler } from "aws-lambda";
-
+import { AbiCoder, ZeroAddress } from "ethers";
 import { division, docClient } from "utils";
+
 import {
    ArchiveTableItem,
    EndpointIdToChainId,
    OrderStatus,
    OrderTableItem,
    SqsEventMessageBody,
+   SupportEndpointIds,
    SupportedEvent,
    SupportedEventSig,
-   SupportEndpointIds,
    TableNames,
 } from "@workspace/hardhat/script";
 
@@ -80,17 +80,20 @@ function genOrderItemBySqsMsg(message: SqsEventMessageBody): OrderTableItem | nu
    }
 
    return {
-      orderId,
+      orderStatus,
+      encodedCompositeKey: coder.encode(["uint32", "uint256"], [chainId, BigInt(orderId)]),
+
       chainId,
+      dstChainId,
       maker,
+      createdAt: message.timestamp,
+
+      orderId,
       taker,
       depositAmount,
       desiredAmount,
-      orderStatus,
-      createdAt: message.timestamp,
       updatedAt: message.timestamp,
       blockNumber: message.blockNumber,
-      dstChainId,
    };
 }
 
@@ -153,15 +156,17 @@ export const eventConsumer: SQSHandler = async (event: SQSEvent): Promise<void> 
       orderTableUpdateTask.push(docClient.send(command));
 
       const archiveItem: ArchiveTableItem = {
-         transactionHash: message.log.transaction.hash,
-         logIndexChainId: coder.encode(
-            ["uint256", "uint256"],
-            [BigInt(message.log.transaction.index), BigInt(message.chainId)],
-         ),
          msgSender: message.log.transaction.from.address,
-         eventSig: eventSig,
-         timestamp: Number(message.timestamp),
+         encodedCompositeKey: coder.encode(
+            ["uint32", "string", "uint32"],
+            [Number(message.chainId), message.log.transaction.hash, Number(message.log.transaction.index)],
+         ),
+
          chainId: Number(message.chainId),
+         timestamp: Number(message.timestamp),
+
+         transactionHash: message.log.transaction.hash,
+         eventSig: eventSig,
          contractAddress: message.log.account.address,
          topics: message.log.topics,
          data: message.log.data,
