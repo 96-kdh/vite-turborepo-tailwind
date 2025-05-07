@@ -19,6 +19,7 @@ resolve_s3 = true
 s3_prefix = "aws-sam"
 region = "ap-northeast-2"
 image_repositories = []
+parameter_overrides = "DBClusterName=\"aurora-test-cluster\" DatabaseName=\"aurora_test_db\" DBAdminUserName=\"admin_user\""
 
 [default.package.parameters]
 resolve_s3 = true

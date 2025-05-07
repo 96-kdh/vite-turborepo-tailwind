@@ -1,11 +1,31 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: aws-sam
+Description: AWS SAM template – Aurora Serverless v2 (provisioned) + Public VPC + AppSync with JS resolver
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 3
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Architectures:
+      - x86_64
+#    VpcConfig:
+#      SecurityGroupIds:
+#        - !Ref DBSecurityGroup
+#      SubnetIds:
+#        - !Ref AppSubnet1
+#        - !Ref AppSubnet2
+
+Parameters:
+  DBClusterName:
+    Type: String
+    Default: aurora-test-cluster
+  DatabaseName:
+    Type: String
+    Default: aurora_test_db
+  DBAdminUserName:
+    Type: String
+    Default: admin_user
 
 Resources:
   EventQueue:
@@ -18,75 +38,7 @@ Resources:
       FifoQueue: true
       ContentBasedDeduplication: true
 
-  OrderTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: orderId
-          AttributeType: S
-        - AttributeName: chainId
-          AttributeType: N
-        - AttributeName: maker
-          AttributeType: S
-        - AttributeName: taker
-          AttributeType: S
-        - AttributeName: orderStatus
-          AttributeType: N
-        - AttributeName: createdAt
-          AttributeType: N
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: orderId
-          KeyType: HASH
-        - AttributeName: chainId
-          KeyType: RANGE
-      GlobalSecondaryIndexes:
-        - IndexName: GSI_maker_createdAt
-          KeySchema:
-            - AttributeName: maker
-              KeyType: HASH
-            - AttributeName: createdAt
-              KeyType: RANGE
-          Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - orderId
-              - chainId
-              - taker
-              - depositAmount
-              - desiredAmount
-              - orderStatus
-        - IndexName: GSI_taker_createdAt
-          KeySchema:
-            - AttributeName: taker
-              KeyType: HASH
-            - AttributeName: createdAt
-              KeyType: RANGE
-          Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - orderId
-              - chainId
-              - maker
-              - depositAmount
-              - desiredAmount
-              - orderStatus
-        - IndexName: GSI_orderStatus_createdAt
-          KeySchema:
-            - AttributeName: orderStatus
-              KeyType: HASH
-            - AttributeName: createdAt
-              KeyType: RANGE
-          Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - orderId
-              - chainId
-              - maker
-              - taker
-              - depositAmount
-              - desiredAmount
-      TableName: !Sub "Order"
+
   ArchiveTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -136,14 +88,13 @@ Resources:
       TableName: !Sub "Archive"
 
 
-
   Api:
     Type: AWS::Serverless::Api
     Properties:
       Name: !Sub
         - ${ResourceName} From Stack ${AWS::StackName}
         - ResourceName: EventWebHookAPI
-      StageName: "StageN"
+      StageName: "Staging"
       EndpointConfiguration: REGIONAL
       # TracingEnabled: true # 주석처리 => 유지하기 위한 최소한의 비용이 나감, 프로덕션에서 필요한 경우에만 활성화
       Cors:
@@ -163,12 +114,17 @@ Resources:
       Enabled: true
   UsagePlanNoLimit:
     Type: AWS::ApiGateway::UsagePlan
+    DependsOn:
+      - Api
+      - ApiStagingStage
     Properties:
       ApiStages:
         - ApiId: !Ref Api
-          Stage: "StageN"
+          Stage: "Staging"
   UsagePlanMapReporting:
     Type: AWS::ApiGateway::UsagePlanKey
+    DependsOn:
+      - UsagePlanNoLimit
     Properties:
       KeyId: !Ref ApiKey
       KeyType: API_KEY
@@ -180,9 +136,6 @@ Resources:
     Properties:
       CodeUri: app/dist
       Handler: app.eventProducer
-      Runtime: nodejs20.x
-      Architectures:
-        - x86_64
       Events:
         API:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -200,9 +153,6 @@ Resources:
     Properties:
       CodeUri: app/dist
       Handler: app.eventConsumer
-      Runtime: nodejs18.x
-      Architectures:
-        - x86_64
       Timeout: 30
       MemorySize: 1024
       Events:
@@ -220,193 +170,225 @@ Resources:
             QueueName: EventQueue.fifo
 
 
-#  # Lambda 함수 (확장된 Resolver 로직 구현, 컴파일된 TypeScript 코드)
-#  GraphQLFunction:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      CodeUri: app/
-#      Handler: app.handler
-#      Runtime: nodejs18.x
-#      Policies:
-#        - AWSLambdaBasicExecutionRole
-#      Events:
-#        GraphQLHTTP:
-#          Type: Api
-#          Properties:
-#            Path: /graphql
-#            Method: POST
-#    Metadata: # Manage esbuild properties
-#      BuildMethod: esbuild
-#      BuildProperties:
-#        Minify: true
-#        Target: "es2020"
-#        EntryPoints:
-#          - app.ts
+  ## 1) Secrets Manager에 DB 자격증명 저장
+  DBSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${DBClusterName}-Secret'
+      Description: 'Aurora Serverless v2 (provisioned) credentials'
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username":"${DBAdminUserName}"}'
+        GenerateStringKey: password
+        ExcludePunctuation: true
+        PasswordLength: 30
+
+  ## 2) VPC 및 퍼블릭 서브넷
+  AppVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  AppSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  AppSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs '']
+
+  ## 3) 인터넷 게이트웨이 & 라우트
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref AppVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRoute1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetRoute2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  ## 4) 보안그룹 (퍼블릭 PostgreSQL 접근 허용)
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL access
+      VpcId: !Ref AppVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 118.217.107.229/32
+
+  ## 5) DB Subnet Group (퍼블릭 서브넷)
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: 'Public subnets for Aurora'
+      SubnetIds:
+        - !Ref AppSubnet1
+        - !Ref AppSubnet2
+
+  ## 6) Aurora Serverless v2 클러스터 (provisioned)
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DBClusterIdentifier: !Ref DBClusterName
+      Engine: aurora-postgresql
+      EngineMode: provisioned
+      EngineVersion: "14.12"
+      DatabaseName: !Ref DatabaseName
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DBSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DBSecret}:SecretString:password}}'
+      EnableHttpEndpoint: true
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0
+        MaxCapacity: 4
+      VpcSecurityGroupIds:
+        - !Ref DBSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      Port: 5432
+      PerformanceInsightsEnabled: false
+
+  ## 7) 단일 Writer 인스턴스 (퍼블릭 IP)
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub '${DBClusterName}-instance'
+      DBClusterIdentifier: !Ref AuroraCluster
+      Engine: aurora-postgresql
+      DBInstanceClass: db.serverless
+      PubliclyAccessible: true
+      EnablePerformanceInsights: false
 
 
-  #### Appsync API ####
-  AppsyncGraphQLApi:
+  ## ── AppSync GraphQL API 정의 ──────────────────────────────────────────── ##
+  GraphQLApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
-      Name: !Sub "AppsyncGraphQLApi-${AWS::StackName}"
+      Name: !Sub 'OrdersApi-${AWS::StackName}'
       AuthenticationType: API_KEY
-      LogConfig:
-        ExcludeVerboseContent: false
-        FieldLogLevel: "ALL"
-        CloudWatchLogsRoleArn: !GetAtt AppsyncPushToCloudWatchLogsRole.Arn
-      XrayEnabled: true
-  AppsyncGraphQLApiKey:
+      XrayEnabled: false
+
+  GraphQLApiKey:
     Type: AWS::AppSync::ApiKey
     Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-  AppsyncGraphQLApiSchema:
+      ApiId: !GetAtt GraphQLApi.ApiId
+
+  GraphQLSchema:
     Type: AWS::AppSync::GraphQLSchema
     Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      DefinitionS3Location: './app/graphql/schema.graphql'
+      ApiId: !GetAtt GraphQLApi.ApiId
+      DefinitionS3Location: app/graphql/schema.graphql
 
-  #### Appsync API Logging ####
-  AppsyncGraphQLApiLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/appsync/apis/${AppsyncGraphQLApi.ApiId}"
-      RetentionInDays: 7
-  AppsyncPushToCloudWatchLogsRole:
+  AppSyncServiceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - appsync.amazonaws.com
-            Action:
-              - sts:AssumeRole
-  AppsyncPushToCloudWatchLogsRolePolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: !Sub ${AWS::StackName}-AppsyncPushToCloudWatchLogs-Policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: !GetAtt AppsyncGraphQLApiLogGroup.Arn
-      Roles:
-        - !Ref AppsyncPushToCloudWatchLogsRole
+              Service: appsync.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AppSyncInvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt OrderListFunction.Arn
 
-  #### Appsync DynamoDB Datasource ####
-  AppsyncDynamoDBDatasourceRole:
-    Type: AWS::IAM::Role
+  ## ── Lambda 함수 정의 (OrderListFunction) ─────────────────────────────── ##
+  OrderListFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
+      FunctionName: !Sub '${DBClusterName}-order-list'
+      CodeUri: app/dist           # your Lambda 코드가 있는 디렉토리
+      Handler: app.rdsHandler     # 예: app/graphql/listOrders.js 의 exports.handler
+      # Globals에서 VpcConfig, Runtime 등을 상속
+      Environment:
+        Variables:
+          DB_CLUSTER_ARN: !Sub 'arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${DBClusterName}'
+          SECRET_ARN: !Ref DBSecret
+          DB_NAME: !Ref DatabaseName
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref DBSecret
+        - Statement:
+            Effect: Allow
             Action:
-              - sts:AssumeRole
-            Principal:
-              Service:
-                - appsync.amazonaws.com
-  AppsyncDynamoDBDatasourceRolePolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: !Sub ${AWS::StackName}-AppsyncDynamoDB-Policy
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action:
-              - dynamodb:GetItem
-              - dynamodb:Query
-              - dynamodb:Scan
+              - rds-data:ExecuteStatement
+              - rds-data:BatchExecuteStatement
+              - rds-data:BeginTransaction
+              - rds-data:CommitTransaction
             Resource:
-              - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrderTable}"
-              - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrderTable}/*"
-      Roles:
-        - !Ref AppsyncDynamoDBDatasourceRole
+              - !Sub 'arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${DBClusterName}'
+              - !Sub 'arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${DBClusterName}/*'
 
-  AppsyncGraphQLApiDataSource:
+  ### 2) AppSync → Lambda 호출 권한 ###
+  OrderListFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt OrderListFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: appsync.amazonaws.com
+      SourceArn: !Sub 'arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/${GraphQLApi.ApiId}/*/Query/listOrders'
+
+  ### 3) AppSync DataSource: 위 Lambda를 연결 ###
+  OrderListDataSource:
     Type: AWS::AppSync::DataSource
     Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      Name: OrderLambdaDataSource
-      Type: "AMAZON_DYNAMODB"
-      ServiceRoleArn: !GetAtt AppsyncDynamoDBDatasourceRole.Arn
-      DynamoDBConfig:
-        AwsRegion: !Sub "${AWS::Region}"
-        TableName: !Ref OrderTable
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: OrderListFunction
+      Type: AWS_LAMBDA
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt OrderListFunction.Arn
+      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
 
-
-
-  #### Appsync Resolvers ####
-  ResolverGetOrder:
+  ### 4) AppSync Resolver: Query.listOrders → Lambda DataSource ###
+  ListOrdersResolver:
     Type: AWS::AppSync::Resolver
+    DependsOn: OrderListDataSource   # 명시적 의존성도 걸어서 순서를 보장
     Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
+      ApiId: !GetAtt GraphQLApi.ApiId
       TypeName: Query
-      FieldName: getOrder
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/getOrder.js
-  ResolverListOrders:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Scan
       FieldName: listOrders
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrders.js
-  ResolverListOrdersByChainId:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Query
-      FieldName: listOrdersByChainId
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrdersByChainId.js
-  ResolverListOrdersByCreatedAt:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Query
-      FieldName: listOrdersByCreatedAt
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrdersByCreatedAt.js
-  ResolverListOrdersByDstChainId:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Query
-      FieldName: listOrdersByDstChainId
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrdersByDstChainId.js
-  ResolverListOrdersByMaker:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt AppsyncGraphQLApi.ApiId
-      TypeName: Query
-      FieldName: listOrdersByMaker
-      DataSourceName: !GetAtt AppsyncGraphQLApiDataSource.Name
-      Runtime:
-        Name: APPSYNC_JS
-        RuntimeVersion: "1.0.0"
-      CodeS3Location: app/graphql/resolvers/listOrdersByMaker.js
+      DataSourceName: !GetAtt OrderListDataSource.Name
+      Kind: UNIT

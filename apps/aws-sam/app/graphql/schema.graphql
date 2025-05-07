@@ -1,34 +1,77 @@
-type Order {
-    orderStatus: Int!
-    encodedCompositeKey: String!
-
-    chainId: Int!
-    dstChainId: Int!
-    maker: String
-    createdAt: Int!
-
-    orderId: ID!
-    taker: String
-    depositAmount: Float
-    desiredAmount: Float
-    updatedAt: Int
-    blockNumber: Int
+enum order_status_enum {
+    no
+    createOrder
+    createOrderLzReceive
+    executeOrder
+    executeOrderLzReceive
+    claim
+    claimLzReceive
+    canceled
+    canceledLzReceive
 }
 
-type PaginatedOrders {
-    items: [Order!]!
-    nextToken: String
+type Order {
+    status: order_status_enum!
+    src_chain_id: Int!
+    dst_chain_id: Int!
+    order_id: ID!
+    deposit_amount: String!
+    desired_amount: String!
+    taker: String
+    maker: String!
+    created_at: String!
+    updated_at: String!
+    block_number: String!
 }
 
 type Query {
-    getOrder(orderStatus: ID!, encodedCompositeKey: Int!, nextToken: String, limit: Int): Order
-    listOrders(nextToken: String, limit: Int): PaginatedOrders!
-    listOrdersByChainId(orderStatus: Int!, chainId: Int!, nextToken: String, limit: Int): PaginatedOrders!
-    listOrdersByCreatedAt(orderStatus: Int!, createdAtFrom: Int!, createdAtTo: Int!, nextToken: String, limit: Int): PaginatedOrders!
-    listOrdersByDstChainId(orderStatus: Int!, dstChainId: Int!, nextToken: String, limit: Int): PaginatedOrders!
-    listOrdersByMaker(orderStatus: Int!, maker: String!, nextToken: String, limit: Int): PaginatedOrders!
+    listOrders(
+        status: order_status_enum
+        srcChainId: Int
+        dstChainId: Int
+        depositMin: String
+        depositMax: String
+        desiredMin: String
+        desiredMax: String
+        createdFrom: String
+        createdTo: String
+        limit: Int = 100
+    ): [Order!]!
 }
 
-schema {
-    query: Query
-}
+#type Query {
+#    # 1) 지금 거래 가능한 최신 오더
+#    listAvailableOrders(
+#        status: OrderStatus!
+#        limit: Int!
+#    ): [Order!]!
+#
+#    # 2) 내 오더 전체 보기 (maker 기준)
+#    ordersByMaker(
+#        maker: String!
+#    ): [Order!]!
+#
+#    # 2b) 내 오더 전체 보기 (taker 기준)
+#    ordersByTaker(
+#        taker: String!
+#    ): [Order!]!
+#
+#    # 3) 복합 필터: src/dst 체인, 상태, 금액·기간 범위
+#    filterOrders(
+#        status: OrderStatus
+#        srcChainId: Int
+#        dstChainId: Int
+#        depositMin: String
+#        depositMax: String
+#        desiredMin: String
+#        desiredMax: String
+#        createdFrom: String
+#        createdTo: String
+#        limit: Int = 100
+#    ): [Order!]!
+#
+#    # 4) 전체 오더 최신순
+#    allOrders(
+#        limit: Int = 100
+#    ): [Order!]!
+#}

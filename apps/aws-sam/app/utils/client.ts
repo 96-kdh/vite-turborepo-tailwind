@@ -1,6 +1,7 @@
-import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { RDSDataClient } from "@aws-sdk/client-rds-data";
 import { SQSClient } from "@aws-sdk/client-sqs";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 import { lowercaseMiddleware } from "./middleware";
 
@@ -37,3 +38,5 @@ export const sqsClient = new SQSClient(
            },
         },
 );
+
+export const rdsClient = new RDSDataClient({});

@@ -1,7 +1,0 @@
-{
-   "field": "getOrder",
-   "arguments": {
-      "orderId": "0",
-      "chainId": 31337
-   }
-}

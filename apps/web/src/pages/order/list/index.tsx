@@ -27,7 +27,7 @@ const OrderList = () => {
 
    const LIST_ORDERS_BY_STATUS_QUERY = `
   query ListOrdersByStatus($orderStatus: Int!, $createdAtFrom: Int, $createdAtTo: Int) {
-    listOrdersByStatus(orderStatus: $orderStatus, createdAtFrom: $createdAtFrom, createdAtTo: $createdAtTo) {
+    listOrders(orderStatus: $orderStatus, createdAtFrom: $createdAtFrom, createdAtTo: $createdAtTo) {
       items {
         orderId
         chainId
@@ -74,7 +74,7 @@ const OrderList = () => {
       desiredAmount: 30,
    };
 
-   // useQuery를 객체 형식으로 사용 (v5 방식)
+   // useQuery 를 객체 형식으로 사용 (v5 방식)
    const {
       data: data2,
       error,

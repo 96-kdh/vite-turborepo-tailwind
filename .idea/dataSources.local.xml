@@ -2,9 +2,7 @@
 <project version="4">
   <component name="dataSourceStorageLocal" created-in="IU-243.21565.193">
     <data-source name="@localhost" uuid="1b780fd5-b3b4-4daf-82b1-fab56f1045da">
-      <database-info product="Dynamo" version="1.0" jdbc-version="4.3" driver-name="Dynamo JDBC Driver" driver-version="0.7" dbms="DYNAMO" exact-version="1.0" exact-driver-version="0.7">
-        <jdbc-catalog-is-schema>true</jdbc-catalog-is-schema>
-      </database-info>
+      <database-info product="Dynamo" version="1.0" jdbc-version="4.3" driver-name="Dynamo JDBC Driver" driver-version="0.7" dbms="DYNAMO" exact-version="1.0" exact-driver-version="0.7" />
       <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed" />
       <secret-storage>master_key</secret-storage>
       <auth-provider>no-auth</auth-provider>

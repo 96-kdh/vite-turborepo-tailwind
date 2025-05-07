@@ -3,9 +3,9 @@
   <database-model serializer="dbm" dbms="POSTGRES" family-id="POSTGRES" format-version="4.53">
     <root id="1">
       <DateStyle>mdy</DateStyle>
-      <IntrospectionStateNumber>759</IntrospectionStateNumber>
+      <IntrospectionStateNumber>749</IntrospectionStateNumber>
       <ServerVersion>14.17</ServerVersion>
-      <StartupTime>1746074813</StartupTime>
+      <StartupTime>1746109384</StartupTime>
       <TimeZones>true ACDT
 true ACSST
 false ACST
@@ -1401,7 +1401,7 @@ true posixrules
 13414||10|C|G
 13414||-9223372036854775808|U|G
 13414||10|U|G</Grants>
-      <IntrospectionStateNumber>759</IntrospectionStateNumber>
+      <IntrospectionStateNumber>749</IntrospectionStateNumber>
       <ObjectId>16384</ObjectId>
       <OwnerName>local</OwnerName>
     </database>
@@ -1418,7 +1418,7 @@ true posixrules
 13414||10|C|G
 13414||-9223372036854775808|U|G
 13414||10|U|G</Grants>
-      <IntrospectionStateNumber>750</IntrospectionStateNumber>
+      <IntrospectionStateNumber>743</IntrospectionStateNumber>
       <ObjectId>13780</ObjectId>
       <OwnerName>local</OwnerName>
     </database>
@@ -6460,8 +6460,8 @@ true posixrules
     <schema id="262" parent="2" name="public">
       <Comment>standard public schema</Comment>
       <Current>1</Current>
-      <IntrospectionStateNumber>759</IntrospectionStateNumber>
-      <LastIntrospectionLocalTimestamp>2025-05-01.05:03:48</LastIntrospectionLocalTimestamp>
+      <IntrospectionStateNumber>749</IntrospectionStateNumber>
+      <LastIntrospectionLocalTimestamp>2025-05-01.14:26:41</LastIntrospectionLocalTimestamp>
       <ObjectId>2200</ObjectId>
       <StateNumber>527</StateNumber>
       <OwnerName>local</OwnerName>
@@ -11449,134 +11449,193 @@ true posixrules
     <schema id="507" parent="3" name="public">
       <Comment>standard public schema</Comment>
       <Current>1</Current>
-      <IntrospectionStateNumber>750</IntrospectionStateNumber>
-      <LastIntrospectionLocalTimestamp>2025-05-01.04:58:48</LastIntrospectionLocalTimestamp>
+      <IntrospectionStateNumber>743</IntrospectionStateNumber>
+      <LastIntrospectionLocalTimestamp>2025-05-01.14:24:19</LastIntrospectionLocalTimestamp>
       <ObjectId>2200</ObjectId>
       <StateNumber>527</StateNumber>
       <OwnerName>local</OwnerName>
     </schema>
-    <table id="508" parent="262" name="orders">
-      <ObjectId>24576</ObjectId>
-      <StateNumber>752</StateNumber>
+    <object-type id="508" parent="262" name="address42">
+      <Definition>char(42)</Definition>
+      <ObjectId>16406</ObjectId>
+      <StateNumber>736</StateNumber>
+      <SubCategory>string</SubCategory>
+      <SubKind>domain</SubKind>
+      <BaseTypeId>1042</BaseTypeId>
+      <OwnerName>local</OwnerName>
+    </object-type>
+    <object-type id="509" parent="262" name="order_status_enum">
+      <Labels>no
+createOrder
+createOrderLzReceive
+executeOrder
+executeOrderLzReceive
+claim
+claimLzReceive
+canceled
+canceledLzReceive</Labels>
+      <ObjectId>16386</ObjectId>
+      <StateNumber>735</StateNumber>
+      <SubCategory>enum</SubCategory>
+      <SubKind>enum</SubKind>
+      <OwnerName>local</OwnerName>
+    </object-type>
+    <object-type id="510" parent="262" name="zero_address">
+      <Definition>char(42)</Definition>
+      <ObjectId>24577</ObjectId>
+      <StateNumber>745</StateNumber>
+      <SubCategory>string</SubCategory>
+      <SubKind>domain</SubKind>
+      <BaseTypeId>1042</BaseTypeId>
+      <OwnerName>local</OwnerName>
+    </object-type>
+    <table id="511" parent="262" name="orders">
+      <ObjectId>16408</ObjectId>
+      <StateNumber>737</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>local</OwnerName>
     </table>
-    <column id="509" parent="508" name="order_status">
+    <check id="512" parent="508" name="address42_check">
+      <ObjectId>16407</ObjectId>
+      <Predicate>VALUE ~ &apos;^0x[0-9A-Fa-f]{40}$&apos;::text</Predicate>
+      <StateNumber>736</StateNumber>
+    </check>
+    <check id="513" parent="510" name="zero_address_check">
+      <ObjectId>24578</ObjectId>
+      <Predicate>VALUE = &apos;0x0000000000000000000000000000000000000000&apos;::bpchar</Predicate>
+      <StateNumber>745</StateNumber>
+    </check>
+    <column id="514" parent="511" name="order_status">
       <NotNull>1</NotNull>
       <Position>1</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>integer|0s</StoredType>
-      <TypeId>23</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>order_status_enum|0s</StoredType>
+      <TypeId>16386</TypeId>
     </column>
-    <column id="510" parent="508" name="chain_id">
+    <column id="515" parent="511" name="src_chain_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
-      <StateNumber>752</StateNumber>
+      <StateNumber>737</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
-    <column id="511" parent="508" name="order_id">
+    <column id="516" parent="511" name="dst_chain_id">
       <NotNull>1</NotNull>
       <Position>3</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>bigint|0s</StoredType>
-      <TypeId>20</TypeId>
-    </column>
-    <column id="512" parent="508" name="dst_chain_id">
-      <NotNull>1</NotNull>
-      <Position>4</Position>
-      <StateNumber>752</StateNumber>
+      <StateNumber>737</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
-    <column id="513" parent="508" name="maker">
+    <column id="517" parent="511" name="order_id">
+      <NotNull>1</NotNull>
+      <Position>4</Position>
+      <StateNumber>737</StateNumber>
+      <StoredType>numeric(78)|0s</StoredType>
+      <TypeId>1700</TypeId>
+    </column>
+    <column id="518" parent="511" name="deposit_amount">
       <NotNull>1</NotNull>
       <Position>5</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>varchar(66)|0s</StoredType>
-      <TypeId>1043</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>numeric(78)|0s</StoredType>
+      <TypeId>1700</TypeId>
     </column>
-    <column id="514" parent="508" name="created_at">
+    <column id="519" parent="511" name="desired_amount">
       <NotNull>1</NotNull>
       <Position>6</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>timestamp|0s</StoredType>
-      <TypeId>1114</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>numeric(78)|0s</StoredType>
+      <TypeId>1700</TypeId>
     </column>
-    <column id="515" parent="508" name="taker">
+    <column id="520" parent="511" name="maker">
+      <NotNull>1</NotNull>
       <Position>7</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>varchar(66)|0s</StoredType>
-      <TypeId>1043</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>address42|0s</StoredType>
+      <TypeId>16406</TypeId>
     </column>
-    <column id="516" parent="508" name="deposit_amount">
+    <column id="521" parent="511" name="taker">
       <Position>8</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>numeric(38)|0s</StoredType>
-      <TypeId>1700</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>address42|0s</StoredType>
+      <TypeId>16406</TypeId>
     </column>
-    <column id="517" parent="508" name="desired_amount">
+    <column id="522" parent="511" name="created_at">
+      <DefaultExpression>now()</DefaultExpression>
+      <NotNull>1</NotNull>
       <Position>9</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>numeric(38)|0s</StoredType>
-      <TypeId>1700</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>timestamp with time zone|0s</StoredType>
+      <TypeId>1184</TypeId>
     </column>
-    <column id="518" parent="508" name="updated_at">
+    <column id="523" parent="511" name="updated_at">
       <Position>10</Position>
-      <StateNumber>752</StateNumber>
-      <StoredType>timestamp|0s</StoredType>
-      <TypeId>1114</TypeId>
+      <StateNumber>737</StateNumber>
+      <StoredType>timestamp with time zone|0s</StoredType>
+      <TypeId>1184</TypeId>
     </column>
-    <column id="519" parent="508" name="block_number">
+    <column id="524" parent="511" name="block_number">
+      <NotNull>1</NotNull>
       <Position>11</Position>
-      <StateNumber>752</StateNumber>
+      <StateNumber>737</StateNumber>
       <StoredType>bigint|0s</StoredType>
       <TypeId>20</TypeId>
     </column>
-    <index id="520" parent="508" name="orders_pkey">
-      <ColNames>order_status
-chain_id
+    <index id="525" parent="511" name="orders_pkey">
+      <ColNames>src_chain_id
 order_id</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>24579</ObjectId>
+      <ObjectId>16414</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>752</StateNumber>
+      <StateNumber>737</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
     </index>
-    <index id="521" parent="508" name="idx_status_dst">
+    <index id="526" parent="511" name="idx_orders_src_dst_status_amt_date">
       <ColNames>order_status
-dst_chain_id</ColNames>
-      <ObjectId>24581</ObjectId>
-      <StateNumber>756</StateNumber>
+src_chain_id
+created_at</ColNames>
+      <ObjectId>16419</ObjectId>
+      <ReverseColNames>created_at</ReverseColNames>
+      <StateNumber>741</StateNumber>
       <AccessMethodId>403</AccessMethodId>
     </index>
-    <index id="522" parent="508" name="idx_status_maker">
-      <ColNames>order_status
-maker</ColNames>
-      <ObjectId>24582</ObjectId>
-      <StateNumber>757</StateNumber>
-      <AccessMethodId>403</AccessMethodId>
-      <CollationIds>
-100</CollationIds>
-      <CollationParentNames>
-pg_catalog</CollationParentNames>
-      <CollationNames>
-default</CollationNames>
-    </index>
-    <index id="523" parent="508" name="idx_status_created">
+    <index id="527" parent="511" name="idx_orders_status_created">
       <ColNames>order_status
 created_at</ColNames>
-      <ObjectId>24583</ObjectId>
-      <StateNumber>758</StateNumber>
+      <ObjectId>16416</ObjectId>
+      <ReverseColNames>created_at</ReverseColNames>
+      <StateNumber>738</StateNumber>
       <AccessMethodId>403</AccessMethodId>
     </index>
-    <key id="524" parent="508" name="orders_pkey">
+    <index id="528" parent="511" name="idx_orders_maker_created">
+      <ColNames>maker
+created_at</ColNames>
+      <ObjectId>16417</ObjectId>
+      <ReverseColNames>created_at</ReverseColNames>
+      <StateNumber>739</StateNumber>
+      <AccessMethodId>403</AccessMethodId>
+      <CollationNames>default</CollationNames>
+      <CollationIds>100</CollationIds>
+      <CollationParentNames>pg_catalog</CollationParentNames>
+    </index>
+    <index id="529" parent="511" name="idx_orders_taker_created">
+      <ColNames>taker
+created_at</ColNames>
+      <ObjectId>16418</ObjectId>
+      <ReverseColNames>created_at</ReverseColNames>
+      <StateNumber>740</StateNumber>
+      <AccessMethodId>403</AccessMethodId>
+      <CollationNames>default</CollationNames>
+      <CollationIds>100</CollationIds>
+      <CollationParentNames>pg_catalog</CollationParentNames>
+    </index>
+    <key id="530" parent="511" name="orders_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>24580</ObjectId>
+      <ObjectId>16415</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>752</StateNumber>
-      <UnderlyingIndexId>24579</UnderlyingIndexId>
+      <StateNumber>737</StateNumber>
+      <UnderlyingIndexId>16414</UnderlyingIndexId>
     </key>
   </database-model>
 </dataSource>
