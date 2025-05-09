@@ -3,6 +3,9 @@ body {
   height: 100dvh;
   max-width: 100vw;
   overflow-x: hidden;
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-ring) var(--sidebar);
 }
 
 button {
@@ -22,3 +25,5 @@ input[type="number"] {
 .missingField {
   border: 1px solid var(--destructive);
 }
+
+

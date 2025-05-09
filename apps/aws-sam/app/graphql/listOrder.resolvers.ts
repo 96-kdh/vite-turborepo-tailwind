@@ -9,23 +9,51 @@ interface RdsDataEvent {
 
 export const getListOrderSQL = (args: { [key: string]: any }) => {
    const limit = typeof args.limit === "number" ? args.limit : 100;
+   const cursor = typeof args.cursor === "string" ? args.cursor : undefined;
 
    // Build dynamic WHERE clause and parameters
    const whereClauses: string[] = [];
    const parameters: SqlParameter[] = [];
 
+   // --- status 처리 (단일 or 배열) ---
    if (args.status) {
-      whereClauses.push("status = :status");
-      parameters.push({ name: "status", value: { stringValue: args.status } });
+      const statuses = Array.isArray(args.status) ? args.status : [args.status];
+      const placeholders = statuses.map((_, i) => `:status${i}`);
+      whereClauses.push(`status IN (${placeholders.join(", ")})`);
+      statuses.forEach((val, i) => {
+         parameters.push({
+            name: `status${i}`,
+            value: { stringValue: String(val) },
+         });
+      });
    }
-   if (typeof args.srcChainId === "number") {
-      whereClauses.push("src_chain_id = :srcChainId");
-      parameters.push({ name: "srcChainId", value: { longValue: args.srcChainId } });
+
+   // --- srcChainId 처리 (단일 or 배열) ---
+   if (args.srcChainId) {
+      const srcs = Array.isArray(args.srcChainId) ? args.srcChainId : [args.srcChainId];
+      const placeholders = srcs.map((_, i) => `:srcChainId${i}`);
+      whereClauses.push(`src_chain_id IN (${placeholders.join(", ")})`);
+      srcs.forEach((val, i) => {
+         parameters.push({
+            name: `srcChainId${i}`,
+            value: { longValue: Number(val) },
+         });
+      });
    }
-   if (typeof args.dstChainId === "number") {
-      whereClauses.push("dst_chain_id = :dstChainId");
-      parameters.push({ name: "dstChainId", value: { longValue: args.dstChainId } });
+
+   // --- dstChainId 처리 (단일 or 배열) ---
+   if (args.dstChainId) {
+      const dsts = Array.isArray(args.dstChainId) ? args.dstChainId : [args.dstChainId];
+      const placeholders = dsts.map((_, i) => `:dstChainId${i}`);
+      whereClauses.push(`dst_chain_id IN (${placeholders.join(", ")})`);
+      dsts.forEach((val, i) => {
+         parameters.push({
+            name: `dstChainId${i}`,
+            value: { longValue: Number(val) },
+         });
+      });
    }
+
    if (args.depositMin) {
       whereClauses.push("deposit_amount >= :depositMin");
       parameters.push({ name: "depositMin", value: { stringValue: args.depositMin } });
@@ -49,6 +77,16 @@ export const getListOrderSQL = (args: { [key: string]: any }) => {
    if (args.createdTo) {
       whereClauses.push("created_at <= :createdTo");
       parameters.push({ name: "createdTo", value: { stringValue: args.createdTo } });
+   }
+   if (args.maker && typeof args.maker === "string" && args.maker.length === 42) {
+      whereClauses.push("maker = :maker");
+      parameters.push({ name: "maker", value: { stringValue: args.maker } });
+   }
+
+   // cursor 기반 페이징
+   if (cursor) {
+      whereClauses.push("created_at < :cursor");
+      parameters.push({ name: "cursor", value: { stringValue: cursor } });
    }
 
    // Always include limit as a parameter

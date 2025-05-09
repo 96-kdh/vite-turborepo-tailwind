@@ -22,22 +22,43 @@ const resolvers = {
       listOrders: async (_, args) => {
          const { sql } = getListOrderSQL(args);
 
+         // 파라미터 이름 수집
          const names = [];
          sql.replace(/:([a-zA-Z]\w*)/g, (_, name) => {
             if (!names.includes(name)) names.push(name);
             return `:${name}`;
          });
 
+         // :name → $1, $2 로 치환
          let pgSql = sql;
          names.forEach((name, i) => {
             const dollar = `$${i + 1}`;
             pgSql = pgSql.replace(new RegExp(`:${name}\\b`, "g"), dollar);
          });
 
-         const pgValues = names.map((name) => args[name]);
-         const { rows } = await pool.query(pgSql, pgValues);
+         // pgValues 생성: status0 → args.status[0], srcChainId2 → args.srcChainId[2], 그 외는 args[name] 사용
+         const pgValues = names.map((name) => {
+            if (name.startsWith("status")) {
+               const idx = parseInt(name.slice("status".length), 10);
+               return args.status[idx];
+            }
+            if (name.startsWith("srcChainId")) {
+               const idx = parseInt(name.slice("srcChainId".length), 10);
+               return args.srcChainId[idx];
+            }
+            if (name.startsWith("dstChainId")) {
+               const idx = parseInt(name.slice("dstChainId".length), 10);
+               return args.dstChainId[idx];
+            }
+            // limit, cursor, depositMin 등은 args에 직접
+            return args[name];
+         });
 
-         return rows;
+         const { rows } = await pool.query(pgSql, pgValues);
+         return {
+            items: rows,
+            nextCursor: rows.length > 0 ? rows[rows.length - 1].created_at.toISOString() : null,
+         };
       },
    },
 };

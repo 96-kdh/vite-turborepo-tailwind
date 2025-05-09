@@ -24,3 +24,7 @@ export * from "./tabs";
 export * from "./toggle";
 export * from "./toggle-group";
 export * from "./calendar";
+export * from "./command";
+export * from "./accordion";
+export * from "./checkbox";
+export * from "./dropdown-menu";

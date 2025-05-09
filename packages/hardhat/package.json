@@ -29,6 +29,7 @@
       "@types/ws": "^8.5.14",
       "@wagmi/cli": "^2.2.1",
       "@workspace/typescript-config": "workspace:^",
+      "@workspace/eslint-config": "workspace:^",
       "chai": "^4.4.1",
       "ethers": "^6.13.5",
       "hardhat": "^2.22.19",

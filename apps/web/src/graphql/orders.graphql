@@ -1,0 +1,44 @@
+query ListOrders(
+    $status: [order_status_enum],
+    $srcChainId: [Int],
+    $dstChainId: [Int],
+    $maker: String,
+    $depositMin: String,
+    $depositMax: String,
+    $desiredMin: String,
+    $desiredMax: String,
+    $createdFrom: String,
+    $createdTo: String,
+    $limit: Int
+    $cursor: String
+) {
+    listOrders(
+        status: $status,
+        srcChainId: $srcChainId,
+        dstChainId: $dstChainId,
+        maker: $maker,
+        depositMin: $depositMin,
+        depositMax: $depositMax,
+        desiredMin: $desiredMin,
+        desiredMax: $desiredMax,
+        createdFrom: $createdFrom,
+        createdTo: $createdTo,
+        limit: $limit
+        cursor: $cursor
+    ) {
+        items {
+            status
+            src_chain_id
+            dst_chain_id
+            order_id
+            deposit_amount
+            desired_amount
+            taker
+            maker
+            created_at
+            updated_at
+            block_number
+        }
+        nextCursor
+    }
+}

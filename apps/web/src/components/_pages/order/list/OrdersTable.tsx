@@ -26,20 +26,25 @@ const OrderRow: React.FC<
 
    return (
       <div style={style}>
-         <Card className="flex items-center gap-4 rounded-lg p-4">
+         <Card className="flex h-[150px] items-center gap-4 rounded-lg p-4">
             <Avatar className="h-12 w-12 rounded-lg bg-gray-200 p-2">
                <img src="/vite.svg" alt="crypto" className="h-full w-full" />
             </Avatar>
             <div className="flex items-center gap-2">
                <p className="text-lg font-bold">{item.deposit_amount}</p>
                <p className="text-blue-600">Bid: {item.maker}</p>
+               <p className="text-blue-600">Bid: {item.status}</p>
+               <p className="text-blue-600">Bid: {item.deposit_amount}</p>
+               <p className="text-blue-600">Bid: {item.deposit_amount}</p>
+               <p className="text-blue-600">Bid: {item.deposit_amount}</p>
+               <p className="text-blue-600">Bid: {item.deposit_amount}</p>
             </div>
          </Card>
       </div>
    );
 };
 
-const OrderList = () => {
+const OrderTable = () => {
    const navigate = useNavigate();
 
    const baseVariables: Omit<ListOrdersQueryVariables, "cursor"> = {
@@ -120,4 +125,4 @@ const OrderList = () => {
    );
 };
 
-export default OrderList;
+export default OrderTable;
